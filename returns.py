@@ -1,5 +1,6 @@
 # A collection of tools useful to calculate things such as returns and drawdowns for financial time-series data.
 import pandas as pd
+import numpy as np
 
 
 

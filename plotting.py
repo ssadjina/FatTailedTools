@@ -1,5 +1,6 @@
 # A collection of various visual tools to help analyze and study fat-tailed data.
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 

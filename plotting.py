@@ -217,8 +217,8 @@ def plot_empirical_kappa_n(series, n_bootstrapping=10000, n_values=list(range(20
     with sns.axes_style('whitegrid'):
         fig, ax = plt.subplots(1, figsize=(10, 5));
         
-        sns.scatterplot(x=x, y=y_right, color='C0', s=9, ax=ax);
-        sns.scatterplot(x=x, y=y_left , color='C3', s=9, ax=ax);
+        sns.scatterplot(x=n_values, y=y_right, color='C0', s=9, ax=ax);
+        sns.scatterplot(x=n_values, y=y_left , color='C3', s=9, ax=ax);
     
     ax.set_title('Empirical Kappa');
     ax.set_xlabel('n');

@@ -131,6 +131,8 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(
     ax.set_ylim([1/len(cleaned_series)/2, 1/3] if tail_zoom else [1/len(cleaned_series)/2, 1]);
     ax.set_xlabel('X');
     ax.set_ylabel('P(|x| > X)');
+    ax.grid(b=True, which='major')
+    ax.grid(b=True, which='minor')
         
     return survival, fig
 
@@ -190,6 +192,8 @@ def plot_twosided_survival_function(series, tail_zoom=False, distribution_right=
     ax.set_ylim([1/len(cleaned_series)/2, 1/3] if tail_zoom else [1/len(cleaned_series)/2, 1]);
     ax.set_xlabel('X');
     ax.set_ylabel('P(|x| > X)');
+    ax.grid(b=True, which='major')
+    ax.grid(b=True, which='minor')
         
     return survival, fig
 

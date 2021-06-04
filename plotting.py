@@ -134,7 +134,7 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(
     ax.grid(b=True, which='major')
     ax.grid(b=True, which='minor')
         
-    return survival, fig
+    return survival, ax
 
 
 
@@ -195,7 +195,7 @@ def plot_twosided_survival_function(series, tail_zoom=False, distribution_right=
     ax.grid(b=True, which='major')
     ax.grid(b=True, which='minor')
         
-    return survival, fig
+    return survival, ax
 
 
 

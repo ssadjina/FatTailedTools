@@ -28,11 +28,15 @@ def fit_alpha_linear(series, tail_start_sigma=2, plot=True):
     
     # Fit the tail
     tail_fit = np.polyfit(survival_tail['Values'], survival_tail['P'], 1)
+    lin_func = np.poly1d(tail_fit)
+    
+    # Get MAD (mean absolute error)
+    mad_error = np.mean(np.abs(np.subtract(lin_func(survival_tail['Values']), survival_tail['Values'])))
 
     # Plot the fit
     if plot:
-        ax.plot(10**survival_tail['Values'], 10**(survival_tail['Values']*tail_fit[0] + tail_fit[1]), 'r');
-        ax.legend(['Fit', 'Data']);
+        ax.plot(10**survival_tail['Values'], 10**lin_func(survival_tail['Values']), 'r');
+        ax.legend(['Fit (MAD = {:.2f})'.format(mad_error), 'Data']);
         plt.title('Tail exponent fitted to tail (alpha = {:.2f})'.format(-tail_fit[0]));
     
     return -tail_fit[0]

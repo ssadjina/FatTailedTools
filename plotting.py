@@ -73,6 +73,8 @@ def max_sum_plot(series):
     
     
     
+from FatTailedTools.survival import get_survival_function
+
 def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(10, 5), point_size=5, title_annotation=None):
     '''
     Plots a one-sided (abs) survival function for a Pandas Series, and returns the survival data itself ("survival") and the figure object.
@@ -81,16 +83,10 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(
     "title_annotation" allows to add text in parenthesis to the title of the plot.
     '''
     
+    # Get survival function
+    survival = get_survival_function(series)
+    
     cleaned_series = abs(series.dropna())
-    
-    # Get values (from smallest to largest)
-    survival = pd.DataFrame(np.linspace(0, cleaned_series.max(), len(cleaned_series)), index=cleaned_series.index, columns=['Values'])
-    
-    # Calculate probability for survival, that is, how many samples are above a certain value
-    survival['P'] = survival['Values'].map(lambda x: (cleaned_series > x).mean())
-    
-    # Drop duplicates
-    survival = survival.drop_duplicates(subset='P', keep='last')
     
     # Plot
     plot_title = 'Survival Function'

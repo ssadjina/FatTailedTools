@@ -63,6 +63,6 @@ def fit_alpha(series, plot=True):
     
     if plot:
         _, ax = plot_survival_function(series, distribution=(dist, params));
-        plt.title('Tail exponent estimated from fitting (alpha = {:.2f})'.format(-tail_fit[0]));
+        plt.title('Tail exponent estimated from fitting (alpha = {:.2f})'.format(params[0]));
         
     return params[0]

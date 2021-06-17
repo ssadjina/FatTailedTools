@@ -43,26 +43,23 @@ def fit_alpha_linear(series, tail_start_sigma=2, plot=True):
 
 
 
-from scipy.stats import t, pareto
+from scipy.stats import t
 
 def fit_alpha(series, plot=True):
     '''
-    Estimates the tail parameter by fitting a Pareto or a Studend-T to the data.
+    Estimates the tail parameter by fitting a Studend-T to the data.
     '''
     
-    # Is the data only positive?
-    if (series.dropna() < 0).sum() == 0:
-        # ... then fit a Pareto
-        dist = pareto
-    else:
-        # ... otherwise use Student-T
-        dist = t
-    
+    # Is the data only one-sided?
+    if (series.dropna() < 0).sum() * (series.dropna() >= 0).sum() == 0:
+        # ... then construct a two-sided distribution
+        series = pd.concat([-series.dropna().abs(), series.dropna().abs()])
+
     # Fit the distribution
-    params = dist.fit(series.dropna())
+    params = t.fit(series.dropna())
     
     if plot:
-        _, ax = plot_survival_function(series, distribution=(dist, params));
+        _, ax = plot_survival_function(series, distribution=(t, params));
         plt.title('Tail exponent estimated from fitting (alpha = {:.2f})'.format(params[0]));
         
     return params[0]

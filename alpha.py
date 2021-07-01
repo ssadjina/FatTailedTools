@@ -11,7 +11,7 @@ from FatTailedTools.survival import get_survival_function
 def fit_alpha_linear(series, tail_start_mad=3, plot=True):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
-    'tail_start_mad' defines where the tail starts in terms of the mean absolute deviation.
+    'tail_start_mad' defines where the tail starts in terms of the mean absolute deviation (typically between 3-4 MADs).
     '''
     
     # Get survival function values

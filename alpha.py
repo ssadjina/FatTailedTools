@@ -8,10 +8,11 @@ import matplotlib.pyplot as plt
 from FatTailedTools.plotting import plot_survival_function
 from FatTailedTools.survival import get_survival_function
 
-def fit_alpha_linear(series, tail_start_mad=3, plot=True):
+def fit_alpha_linear(series, tail_start_mad=3, plot=True, return_loc=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
     'tail_start_mad' defines where the tail starts in terms of the mean absolute deviation (typically between 3-4 MADs).
+    The estimated location of the Pareto (with the estimated tail exponent) will also re returned if 'return_loc' is True.
     '''
     
     # Get survival function values
@@ -30,6 +31,10 @@ def fit_alpha_linear(series, tail_start_mad=3, plot=True):
     tail_fit = np.polyfit(survival_tail['Values'], survival_tail['P'], 1)
     lin_func = np.poly1d(tail_fit)
     
+    # Get tail parameter and location/scale
+    tail = -tail_fit[0]
+    location = (1 - tail_fit[1]) / tail_fit[0]
+    
     # Get MSE (mean squared error)
     mse_error = np.mean(np.square(np.subtract(lin_func(survival_tail['Values']), survival_tail['Values'])))
 
@@ -37,9 +42,12 @@ def fit_alpha_linear(series, tail_start_mad=3, plot=True):
     if plot:
         ax.plot(10**survival_tail['Values'], 10**lin_func(survival_tail['Values']), 'r');
         ax.legend(['Fit (MSE = {:.2f})'.format(mse_error), 'Data']);
-        plt.title('Tail exponent fitted to tail (alpha = {:.2f})'.format(-tail_fit[0]));
+        plt.title('Tail exponent fitted to tail (alpha = {:.2f}, loc = {:.2f})'.format(tail, location));
+        
+    # Construct result
+    result = tail, location if return_loc else tail
     
-    return -tail_fit[0]
+    return result
 
 
 
@@ -75,35 +83,44 @@ def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=
     Also randomly samples where the tail of the distribution is assumed to start (using 'n_tail_start_samples' samples per subset).
     '''
     
-    _alpha_results_both  = []
-    _alpha_results_left  = []
-    _alpha_results_right = []
+    # Set up lists
+    _results_both  = []
+    _results_left  = []
+    _results_right = []
     
+    # Subsample and fit
     for subsample in [series.sample(frac=frac) for i in range(n_subsets)]:
         
-        for tail_start_mad in np.random.normal(2.25, 0.45, n_tail_start_samples):
+        for tail_start_mad in np.random.normal(3, 0.5, n_tail_start_samples):
             
-            _alpha_results_both.append(subsample.abs().agg(fit_alpha_linear, tail_start_mad=tail_start_mad, plot=False))
-            _alpha_results_left.append(subsample.where(subsample  < 0).abs().agg(fit_alpha_linear, tail_start_mad=tail_start_mad, plot=False))
-            _alpha_results_right.append(subsample.where(subsample >= 0).abs().agg(fit_alpha_linear, tail_start_mad=tail_start_mad, plot=False))
-    
-    _alpha_results_both  = pd.Series(_alpha_results_both)
-    _alpha_results_left  = pd.Series(_alpha_results_left)
-    _alpha_results_right = pd.Series(_alpha_results_right)        
+            _results_both.append(subsample.abs().agg(fit_alpha_linear, tail_start_mad=tail_start_mad, plot=False, return_loc=True))
+            _results_left.append(subsample.where(subsample  < 0).abs().agg(fit_alpha_linear, tail_start_mad=tail_start_mad, plot=False, return_loc=True))
+            _results_right.append(subsample.where(subsample >= 0).abs().agg(fit_alpha_linear, tail_start_mad=tail_start_mad, plot=False, return_loc=True))      
         
+    # Assemble into DataFrame
+    alphas = pd.DataFrame.from_records(np.hstack([_results_both, _results_left, _results_right]), columns=pd.MultiIndex.from_product([['Both', 'Left', 'Right'], ['Tail Exponent', 'Location']]))    
+        
+    # Plot
     if plot:
         
-        fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+        fig, ax = plt.subplots(2, 3, figsize=(15, 10))
+        
         fig.suptitle('Tail exponents for {} with random subsamples'.format(series.name))
         
-        for idx, _alpha_results in enumerate([_alpha_results_both, _alpha_results_left, _alpha_results_right]):
+        for idx, name in enumerate(['Both', 'Left', 'Right']):
             
-            sns.histplot(data=_alpha_results, color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[idx]);
-            ax[idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(_alpha_results.median(), _alpha_results.mean(), ['both', 'left', 'right'][idx]));
-            ax[idx].set_xlabel('Tail exponent ({})'.format(['both', 'left', 'right'][idx]));
+            sns.histplot(data=alphas[(name, 'Tail Exponent')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[0, idx]);
+            ax[0, idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Tail Exponent')].median(), alphas[(name, 'Tail Exponent')].mean(), ['both', 'left', 'right'][idx]));
+            ax[0, idx].set_xlabel('Tail exponent ({})'.format(['both', 'left', 'right'][idx]));
+        
+        fig.suptitle('Tail exponents for {} with random subsamples'.format(series.name))
+        
+        for idx, name in enumerate(['Both', 'Left', 'Right']):
+            
+            sns.histplot(data=alphas[(name, 'Location')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[1, idx]);
+            ax[1, idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Location')].median(), alphas[(name, 'Location')].mean(), ['both', 'left', 'right'][idx]));
+            ax[1, idx].set_xlabel('Location ({})'.format(['both', 'left', 'right'][idx]));
             
         plt.show();
-    
-    alphas = pd.concat([_alpha_results_both, _alpha_results_left, _alpha_results_right], axis=1, keys=['Both', 'Left', 'Right'])
     
     return alphas

@@ -103,7 +103,7 @@ def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=
     # Plot
     if plot:
         
-        fig, ax = plt.subplots(1, 3, figsize=(15, 10))
+        fig, ax = plt.subplots(1, 3, figsize=(15, 5))
         
         fig.suptitle('Tail exponents for {} with random subsamples'.format(series.name))
         
@@ -118,7 +118,7 @@ def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=
         # Also plot locations if return_loc
         if return_loc:
         
-            fig, ax = plt.subplots(1, 3, figsize=(15, 10))
+            fig, ax = plt.subplots(1, 3, figsize=(15, 5))
         
             fig.suptitle('Locations for {} with random subsamples'.format(series.name))
             

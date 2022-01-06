@@ -109,9 +109,9 @@ def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=
         
         for idx, name in enumerate(['Both', 'Left', 'Right']):
             
-            sns.histplot(data=alphas[(name, 'Tail Exponent')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[0, idx]);
-            ax[0, idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Tail Exponent')].median(), alphas[(name, 'Tail Exponent')].mean(), ['both', 'left', 'right'][idx]));
-            ax[0, idx].set_xlabel('Tail exponent ({})'.format(['both', 'left', 'right'][idx]));
+            sns.histplot(data=alphas[(name, 'Tail Exponent')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[idx]);
+            ax[idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Tail Exponent')].median(), alphas[(name, 'Tail Exponent')].mean(), ['both', 'left', 'right'][idx]));
+            ax[idx].set_xlabel('Tail exponent ({})'.format(['both', 'left', 'right'][idx]));
             
         plt.show();
         
@@ -124,9 +124,9 @@ def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=
             
             for idx, name in enumerate(['Both', 'Left', 'Right']):
                 
-                sns.histplot(data=alphas[(name, 'Location')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[0, idx]);
-                ax[0, idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Location')].median(), alphas[(name, 'Location')].mean(), ['both', 'left', 'right'][idx]));
-                ax[0, idx].set_xlabel('Location ({})'.format(['both', 'left', 'right'][idx]));
+                sns.histplot(data=alphas[(name, 'Location')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[idx]);
+                ax[idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Location')].median(), alphas[(name, 'Location')].mean(), ['both', 'left', 'right'][idx]));
+                ax[idx].set_xlabel('Location ({})'.format(['both', 'left', 'right'][idx]));
                 
             plt.show();
         

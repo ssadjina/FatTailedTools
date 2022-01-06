@@ -17,7 +17,7 @@ def fit_alpha_linear(series, tail_start_mad=3, plot=True, return_loc=False):
     
     # Get survival function values
     if plot:
-        survival, ax = plot_survival_function(series, tail_zoom=True)
+        survival, ax = plot_survival_function(series, tail_zoom=False)
     else:
         survival = get_survival_function(series)
     

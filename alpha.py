@@ -76,11 +76,11 @@ def fit_alpha(series, plot=True):
 
 import seaborn as sns
 
-def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=1, plot=True):
+def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=1, plot=True, return_loc=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
     Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
-    Also randomly samples where the tail of the distribution is assumed to start (using 'n_tail_start_samples' samples per subset).
+    If return_loc is True, also returns where the tail of the distribution is assumed to start (using random subsampling with 'n_tail_start_samples' samples per subset).
     '''
     
     # Set up lists
@@ -122,5 +122,8 @@ def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=
             ax[1, idx].set_xlabel('Location ({})'.format(['both', 'left', 'right'][idx]));
             
         plt.show();
+        
+    # Construct result
+    result = alphas if return_loc else alphas.loc[:, (slice(None), 'Tail Exponent')]
     
-    return alphas
+    return result

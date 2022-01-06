@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from FatTailedTools.plotting import plot_survival_function
 from FatTailedTools.survival import get_survival_function
 
-def fit_alpha_linear(series, tail_start_mad=3, plot=True, return_loc=False):
+def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
     'tail_start_mad' defines where the tail starts in terms of the mean absolute deviation (typically between 3-4 MADs).
@@ -91,7 +91,7 @@ def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=
     # Subsample and fit
     for subsample in [series.sample(frac=frac) for i in range(n_subsets)]:
         
-        for tail_start_mad in np.random.normal(3, 0.5, n_tail_start_samples):
+        for tail_start_mad in np.random.normal(2.5, 0.5, n_tail_start_samples):
             
             _results_both.append(subsample.abs().agg(fit_alpha_linear, tail_start_mad=tail_start_mad, plot=False, return_loc=True))
             _results_left.append(subsample.where(subsample  < 0).abs().agg(fit_alpha_linear, tail_start_mad=tail_start_mad, plot=False, return_loc=True))

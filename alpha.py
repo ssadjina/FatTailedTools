@@ -103,7 +103,7 @@ def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=
     # Plot
     if plot:
         
-        fig, ax = plt.subplots(2, 3, figsize=(15, 10))
+        fig, ax = plt.subplots(1, 3, figsize=(15, 10))
         
         fig.suptitle('Tail exponents for {} with random subsamples'.format(series.name))
         
@@ -112,16 +112,23 @@ def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=
             sns.histplot(data=alphas[(name, 'Tail Exponent')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[0, idx]);
             ax[0, idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Tail Exponent')].median(), alphas[(name, 'Tail Exponent')].mean(), ['both', 'left', 'right'][idx]));
             ax[0, idx].set_xlabel('Tail exponent ({})'.format(['both', 'left', 'right'][idx]));
-        
-        fig.suptitle('Locations for {} with random subsamples'.format(series.name))
-        
-        for idx, name in enumerate(['Both', 'Left', 'Right']):
-            
-            sns.histplot(data=alphas[(name, 'Location')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[1, idx]);
-            ax[1, idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Location')].median(), alphas[(name, 'Location')].mean(), ['both', 'left', 'right'][idx]));
-            ax[1, idx].set_xlabel('Location ({})'.format(['both', 'left', 'right'][idx]));
             
         plt.show();
+        
+        # Also plot locations if return_loc
+        if return_loc:
+        
+            fig, ax = plt.subplots(1, 3, figsize=(15, 10))
+        
+            fig.suptitle('Locations for {} with random subsamples'.format(series.name))
+            
+            for idx, name in enumerate(['Both', 'Left', 'Right']):
+                
+                sns.histplot(data=alphas[(name, 'Location')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[0, idx]);
+                ax[0, idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Location')].median(), alphas[(name, 'Location')].mean(), ['both', 'left', 'right'][idx]));
+                ax[0, idx].set_xlabel('Location ({})'.format(['both', 'left', 'right'][idx]));
+                
+            plt.show();
         
     # Construct result
     result = alphas if return_loc else alphas.loc[:, (slice(None), 'Tail Exponent')]

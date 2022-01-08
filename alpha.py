@@ -11,7 +11,7 @@ from FatTailedTools.survival import get_survival_function
 def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
-    'tail_start_mad' defines where the tail starts in terms of the mean absolute deviation (typically between 3-4 MADs).
+    'tail_start_mad' defines where the tail starts in terms of the mean absolute deviation (typically between 2-4 MADs).
     The estimated location of the Pareto (with the estimated tail exponent) will also re returned if 'return_loc' is True.
     '''
     
@@ -56,6 +56,7 @@ from scipy.stats import t
 def fit_alpha(series, plot=True):
     '''
     Estimates the tail parameter by fitting a Studend-T to the data.
+    If the passed data is from a one-sided distribution, it will first be mirrored at 0 to make it symmetrical.
     '''
     
     # Is the data only one-sided?

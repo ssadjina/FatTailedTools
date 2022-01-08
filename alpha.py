@@ -1,4 +1,4 @@
-# A collection of various tools to help analyze the tail exponent.
+# A collection of various tools to help estimate and analyze the tail exponent.
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,7 +22,7 @@ def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
         survival = get_survival_function(series)
     
     # Estimate tail start (= everything beyond 'tail_start_mad' mean absolute deviations)
-    tail_start = tail_start_mad*series.abs().mad()
+    tail_start = get_tail_start(series, tail_start_mad)
     
     # Get tail
     survival_tail = np.log10(survival.loc[survival['Values'] >= tail_start].iloc[:-1])
@@ -48,6 +48,16 @@ def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
     result = tail, location if return_loc else tail
     
     return result
+
+
+
+def get_tail_start(series, tail_start_mad):
+    '''
+    Returns the start of the tail of 'series' based on 'tail_start_mad'.
+    'tail_start_mad' defines where the tail starts in terms of the mean absolute deviation (typically between 2-4 MADs).
+    '''
+    
+    return tail_start_mad * series.abs().mad()
 
 
 

@@ -59,7 +59,7 @@ def fit_alpha(series, plot=True):
     '''
     
     # Is the data only one-sided?
-    if (series.dropna() < 0).sum() * (series.dropna() >= 0).sum() == 0:
+    if (series.dropna() < 0).sum() * (series.dropna() > 0).sum() == 0:
         # ... then construct a two-sided distribution
         series = pd.concat([-series.dropna().abs(), series.dropna().abs()])
 

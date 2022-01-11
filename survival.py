@@ -4,10 +4,11 @@ import numpy as np
 
 
 
-def get_survival_function(series):
+def get_survival_function(series, drop_duplicates=True):
     '''
     Calculates a one-sided (abs) survival function for a Pandas Series.
     Returns a Pandas DataFrame with the columns "Values", X, and "P", P(x >= X), keeping the index (NAs dropped).
+    'drop_duplicates' determines whether duplicates in the survival function are dropped or not.
     '''
     
     cleaned_series = abs(series.dropna())
@@ -19,6 +20,7 @@ def get_survival_function(series):
     survival['P'] = survival['Values'].map(lambda x: (cleaned_series > x).mean())
     
     # Drop duplicates
-    survival = survival.drop_duplicates(subset='P', keep='last')
+    if drop_duplicates:
+        survival = survival.drop_duplicates(subset='P', keep='last')
     
     return survival

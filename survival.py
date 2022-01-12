@@ -15,7 +15,7 @@ def get_survival_function(series, inclusive=True):
     abs_series = series.dropna().abs()
     
     # Set up DataFrame and sort values from largest to smallest
-    survival = pd.DataFrame(abs_series, index=abs_series.index, columns=['Values']).sort_values(by='Values', ascending=True)
+    survival = pd.DataFrame(abs_series.values, index=abs_series.index, columns=['Values']).sort_values(by='Values', ascending=True)
     
     # Determine whether we compare with '>=' or with '>'
     if inclusive:

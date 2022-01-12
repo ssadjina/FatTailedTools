@@ -4,23 +4,26 @@ import numpy as np
 
 
 
-def get_survival_function(series, drop_duplicates=True):
+def get_survival_function(series, inclusive=True):
     '''
-    Calculates a one-sided (abs) survival function for a Pandas Series.
-    Returns a Pandas DataFrame with the columns "Values", X, and "P", P(x >= X), keeping the index (NAs dropped).
-    'drop_duplicates' determines whether duplicates in the survival function are dropped or not.
+    Calculates a (one-sided) survival function from (the absolute values of) a Pandas Series 'series'.
+    Returns a Pandas DataFrame with the columns "Values", X, and "P", P(x >= X), keeping the index (and NAs dropped).
+    If 'inclusive', P(x >= X) is used and the largest data point is plotted. Else, P(x > X) is used and the largest data point is not plotted. The latter is consistent with, e.g., seaborn.ecdfplot(complementary=True).
     '''
     
-    cleaned_series = abs(series.dropna())
+    # Take absolute values and drop NAs
+    abs_series = series.dropna().abs()
     
-    # Get values (from smallest to largest)
-    survival = pd.DataFrame(np.linspace(0, cleaned_series.max(), len(cleaned_series)), index=cleaned_series.index, columns=['Values'])
+    # Set up DataFrame and sort values from largest to smallest
+    survival = pd.DataFrame(abs_series, index=abs_series.index, columns=['Values']).sort_values(by='Values', ascending=True)
     
-    # Calculate probability for survival, that is, how many samples are above a certain value
-    survival['P'] = survival['Values'].map(lambda x: (cleaned_series > x).mean())
+    # Determine whether we compare with '>=' or with '>'
+    if inclusive:
+        func = lambda x: (survival['Values'] >= x).mean()
+    else:
+        func = lambda x: (survival['Values'] > x).mean()
     
-    # Drop duplicates
-    if drop_duplicates:
-        survival = survival.drop_duplicates(subset='P', keep='last')
+    # Get survival probabilities
+    survival['P'] = survival['Values'].apply(func)
     
     return survival

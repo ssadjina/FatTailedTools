@@ -40,8 +40,9 @@ def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
 
     # Plot the fit
     if plot:
-        x_values = np.log10(survival['Values']) + [np.log10(survival['Values'].abs().max()) + 1]
-        ax.plot(10**x_values, 10**lin_func(x_values), 'r--');
+        # Get x values (from min/max of survival values)
+        x_values = np.log10(np.array([survival.loc[survival['Values'] > 0, 'Values'].min()/10, survival.loc[survival['Values'] > 0, 'Values'].max()*10]))
+        ax.plot(10**x_values, 10**lin_func(x_values), 'r--', alpha=0.6);
         ax.legend(['Data', 'Fit (MSE = {:.2f})'.format(mse_error)]);
         plt.title('Tail exponent fitted to tail (alpha = {:.2f}, loc = {:.2f})'.format(tail, location));
         

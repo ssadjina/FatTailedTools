@@ -97,7 +97,7 @@ def fit_alpha(series, plot=True):
 
 import seaborn as sns
 
-def fit_alpha_subsampling(series, frac=0.7, n_subsets=100, n_tail_start_samples=1, plot=True, return_loc=False):
+def fit_alpha_subsampling(series, frac=0.7, n_subsets=300, n_tail_start_samples=1, plot=True, return_loc=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
     Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.

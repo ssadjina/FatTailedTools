@@ -37,7 +37,7 @@ def get_max_drawdowns(series, n, use_log=True):
         Daily_Drawdown = cleaned_series/Roll_Max - 1.0
     
     # Next we calculate the minimum (negative) daily drawdown in that window.
-    return Daily_Drawdown.rolling(n, min_periods=1).min()
+    return Daily_Drawdown.resample(str(n) + 'd').min()
 
 
 
@@ -58,4 +58,4 @@ def get_max_drawups(series, n, use_log=True):
         Daily_Drawup = cleaned_series/Roll_Min - 1.0
     
     # Next we calculate the maximum (positive) daily drawup in that window.
-    return Daily_Drawup.rolling(n, min_periods=1).max()
+    return Daily_Drawup.resample(str(n) + 'd').max()

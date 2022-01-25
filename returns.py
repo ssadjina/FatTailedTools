@@ -8,7 +8,7 @@ def get_returns(series, periods=1):
     '''
     Calculates the returns from a given Pandas Series using period "periods"
     '''
-    return series.pct_change(periods=periods).dropna()
+    return series.pct_change(periods=periods, fill_method=None).dropna()
 
 
 

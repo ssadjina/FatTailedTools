@@ -31,7 +31,7 @@ def get_survival_function(series, inclusive=True):
 
 
 
-from FatTailedTools.alpha import get_tail_start
+from FatTailedTools.alpha import get_tail_start, fit_alpha_linear
 
 def get_tail_survival_probability(series, X, tail_start_mad=2.5, plot=True):
     '''
@@ -81,8 +81,6 @@ def get_tail_survival_probability_from_alpha_fit(X, alpha, loc, tail_start):
 import seaborn as sns
 from matplotlib.ticker import PercentFormatter
 
-from FatTailedTools.alpha import get_tail_start, fit_alpha_linear
-from FatTailedTools.survival import get_survival_function
 from FatTailedTools.plotting import plot_survival_function
 
 def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, n_tail_start_samples=1, plot=True, title_annotation=None):
@@ -118,7 +116,7 @@ def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, n_t
                 
             # Otherwise estimate with tail fit
             else:
-                result = get_tail_probabilities(subsample, X, tail_start_mad=tail_start_mad, plot=False)
+                result = get_tail_survival_probability_from_alpha_fit(subsample, X, tail_start_mad=tail_start_mad, plot=False)
                 
             plt.show();
             results.append(result)

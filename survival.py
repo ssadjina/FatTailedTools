@@ -6,6 +6,11 @@ import warnings
 
 
 
+from FatTailedTools import alpha
+from FatTailedTools import plotting
+
+
+
 def get_survival_function(series, inclusive=True):
     '''
     Calculates a (one-sided) survival function from (the absolute values of) a Pandas Series 'series'.
@@ -31,8 +36,6 @@ def get_survival_function(series, inclusive=True):
     return survival
 
 
-
-from FatTailedTools.alpha import get_tail_start, fit_alpha_linear
 
 def get_tail_survival_probability(series, X, tail_start_mad=2.5, plot=True):
     '''
@@ -81,8 +84,6 @@ def get_tail_survival_probability_from_alpha_fit(X, alpha, loc, tail_start):
 
 import seaborn as sns
 from matplotlib.ticker import PercentFormatter
-
-from FatTailedTools.plotting import plot_survival_function
 
 def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, n_tail_start_samples=1, plot=True, title_annotation=None):
     '''

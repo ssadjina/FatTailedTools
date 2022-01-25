@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 
 
 
+from FatTailedTools import survival
+from FatTailedTools import plotting
+
+
+
 def get_tail_start(series, tail_start_mad):
     '''
     Returns the start of the tail of 'series' based on 'tail_start_mad'.
@@ -12,11 +17,6 @@ def get_tail_start(series, tail_start_mad):
     '''
     
     return tail_start_mad * series.abs().mad()
-
-
-
-from FatTailedTools.survival import get_survival_function
-from FatTailedTools.plotting import plot_survival_function
 
 
 

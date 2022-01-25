@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 
 
 
-from FatTailedTools.survival import get_survival_function
+from FatTailedTools import survival
+from FatTailedTools import kappa_metric
 
 
 
@@ -196,8 +197,6 @@ def plot_twosided_survival_function(series, tail_zoom=False, distribution_right=
     return survival, ax
 
 
-
-from FatTailedTools.kappa_metric import kappa_n, empirical_kappa, get_bootstrapped_samples
 
 def plot_empirical_kappa_n(series, n_bootstrapping=10000, n_values=list(range(20, 601, 20))):
     '''

@@ -70,7 +70,7 @@ def get_tail_survival_probability_from_alpha_fit(X, alpha, loc, tail_start):
     
     # Check that 'x' is in tail
     if X < tail_start:
-        warnings.warn('X={} is not in the tail (which is estimated to start at {}). Returning \'np.nan\''.format(x, tail_start))
+        warnings.warn('X={} is not in the tail (which is estimated to start at {}). Returning \'np.nan\''.format(X, tail_start))
         return np.nan
     
     probability = 10**(-alpha * np.log10(X) + (1 + loc * alpha))

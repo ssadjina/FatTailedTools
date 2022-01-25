@@ -87,7 +87,7 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(
     '''
     
     # Get survival function
-    survival = get_survival_function(series)
+    survival = survival.get_survival_function(series)
     
     cleaned_series = abs(series.dropna())
     
@@ -211,8 +211,8 @@ def plot_empirical_kappa_n(series, n_bootstrapping=10000, n_values=list(range(20
     series_right = cleaned_series.loc[cleaned_series >= 0]
     series_left  = cleaned_series.loc[cleaned_series <  0]
 
-    y_right = [kappa_n(series_right, n, n_bootstrapping=n_bootstrapping) for n in n_values]
-    y_left  = [kappa_n(series_left , n, n_bootstrapping=n_bootstrapping) for n in n_values]
+    y_right = [kappa.kappa_n(series_right, n, n_bootstrapping=n_bootstrapping) for n in n_values]
+    y_left  = [kappa.kappa_n(series_left , n, n_bootstrapping=n_bootstrapping) for n in n_values]
     
     
     with sns.axes_style('whitegrid'):

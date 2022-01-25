@@ -7,7 +7,6 @@ import warnings
 
 
 from FatTailedTools import alpha
-from FatTailedTools import plotting
 
 
 
@@ -46,10 +45,10 @@ def get_tail_survival_probability(series, X, tail_start_mad=2.5, plot=True):
     '''
     
     # Get start of tail and check that X is in tail
-    tail_start = get_tail_start(series, tail_start_mad)
+    tail_start = alpha.get_tail_start(series, tail_start_mad)
     
     # Fit tail
-    alpha, loc = fit_alpha_linear(series, return_loc=True, tail_start_mad=tail_start_mad, plot=plot)
+    alpha, loc = alpha.fit_alpha_linear(series, return_loc=True, tail_start_mad=tail_start_mad, plot=plot)
     
     # Probability that x >= X
     probability = get_tail_survival_probability_from_alpha_fit(X, alpha, loc, tail_start=tail_start)
@@ -105,7 +104,7 @@ def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, n_t
         for tail_start_mad in np.random.normal(2.5, 0.5, n_tail_start_samples):
             
             # Get estimate for where tail starts
-            tail_start = get_tail_start(subsample, tail_start_mad)
+            tail_start = alpha.get_tail_start(subsample, tail_start_mad)
             
             # If X is not in tail (smaller)...
             if X < tail_start:

@@ -29,9 +29,9 @@ def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
     
     # Get survival function values
     if plot:
-        survival, ax = plot_survival_function(series, tail_zoom=False)
+        survival, ax = plotting.plot_survival_function(series, tail_zoom=False)
     else:
-        survival = get_survival_function(series)
+        survival = survival.get_survival_function(series)
     
     # Estimate tail start (= everything beyond 'tail_start_mad' mean absolute deviations)
     tail_start = get_tail_start(series, tail_start_mad)
@@ -90,7 +90,7 @@ def fit_alpha(series, plot=True):
     params = t.fit(series.dropna())
     
     if plot:
-        _, ax = plot_survival_function(series, distribution=(t, params));
+        _, ax = plotting.plot_survival_function(series, distribution=(t, params));
         plt.title('Tail exponent estimated from fitting (alpha = {:.2f})'.format(params[0]));
         
     return params[0]

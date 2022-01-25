@@ -29,15 +29,15 @@ def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
     
     # Get survival function values
     if plot:
-        survival, ax = plotting.plot_survival_function(series, tail_zoom=False)
+        survival_func, ax = plotting.plot_survival_function(series, tail_zoom=False)
     else:
-        survival = survival.get_survival_function(series)
+        survival_func = survival.get_survival_function(series)
     
     # Estimate tail start (= everything beyond 'tail_start_mad' mean absolute deviations)
     tail_start = get_tail_start(series, tail_start_mad)
     
     # Get tail
-    survival_tail = np.log10(survival.loc[survival['Values'] >= tail_start].iloc[:-1])
+    survival_tail = np.log10(survival_func.loc[survival_func['Values'] >= tail_start].iloc[:-1])
     
     # Fit the tail
     tail_fit = np.polyfit(survival_tail['Values'], survival_tail['P'], 1)
@@ -54,10 +54,10 @@ def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
     if plot:
         
         # Get x values (from min/max of survival values)
-        x_values = np.log10(np.array([survival.loc[survival['Values'] > 0, 'Values'].min()/10, survival.loc[survival['Values'] > 0, 'Values'].max()*10]))
+        x_values = np.log10(np.array([survival_func.loc[survival_func['Values'] > 0, 'Values'].min()/10, survival_func.loc[survival_func['Values'] > 0, 'Values'].max()*10]))
         
         # Visualize area where tail is assumed to be
-        ax.axvspan(10**survival_tail['Values'].min(), 10**(survival['Values'].max() + 1), survival['P'].min()/10, 1, alpha=0.1, color='r')
+        ax.axvspan(10**survival_tail['Values'].min(), 10**(survival_func['Values'].max() + 1), survival_func['P'].min()/10, 1, alpha=0.1, color='r')
         
         # Plot tail fit
         ax.plot(10**x_values, 10**lin_func(x_values), 'r--', alpha=0.6);

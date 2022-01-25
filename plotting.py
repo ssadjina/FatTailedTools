@@ -87,7 +87,7 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(
     '''
     
     # Get survival function
-    survival = survival.get_survival_function(series)
+    survival_func = survival.get_survival_function(series)
     
     cleaned_series = abs(series.dropna())
     
@@ -97,7 +97,7 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(
         plot_title += ' ({})'.format(title_annotation)
     with sns.axes_style('whitegrid'):
         fig, ax = plt.subplots(1, figsize=figsize);
-        sns.scatterplot(data=survival, x='Values', y='P', s=point_size, ax=ax).set_title(plot_title);
+        sns.scatterplot(data=survival_func, x='Values', y='P', s=point_size, ax=ax).set_title(plot_title);
     
     # Also plot distribution, if provided
     # ===================================
@@ -133,7 +133,7 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(
     ax.grid(b=True, which='major')
     ax.grid(b=True, which='minor')
         
-    return survival, ax
+    return survival_func, ax
 
 
 
@@ -151,14 +151,14 @@ def plot_twosided_survival_function(series, tail_zoom=False, distribution_right=
     series_right = cleaned_series.loc[cleaned_series >= 0]
     
     # Get values (from smallest to largest)
-    survival = pd.DataFrame(np.linspace(0, abs(cleaned_series).max(), len(cleaned_series)), index=cleaned_series.index, columns=['Values'])
+    survival_func = pd.DataFrame(np.linspace(0, abs(cleaned_series).max(), len(cleaned_series)), index=cleaned_series.index, columns=['Values'])
     
     # Calculate probability for survival, that is, how many samples are above a certain value
-    survival['P_left']  = survival['Values'].map(lambda x: (-series_left > x).mean())
-    survival['P_right'] = survival['Values'].map(lambda x: (series_right > x).mean())
+    survival_func['P_left']  = survival_func['Values'].map(lambda x: (-series_left > x).mean())
+    survival_func['P_right'] = survival_func['Values'].map(lambda x: (series_right > x).mean())
     
     # Drop duplicates
-    survival = survival.drop_duplicates(subset=['P_left', 'P_right'], keep='last')
+    survival_func = survival_func.drop_duplicates(subset=['P_left', 'P_right'], keep='last')
     
     # Plot
     plot_title = 'Survival Function'
@@ -166,8 +166,8 @@ def plot_twosided_survival_function(series, tail_zoom=False, distribution_right=
         plot_title += ' ({})'.format(title_annotation)
     with sns.axes_style('whitegrid'):
         fig, ax = plt.subplots(1, figsize=figsize);
-        sns.scatterplot(data=survival, x='Values', y='P_right', color='C0', s=point_size, ax=ax).set_title(plot_title);
-        sns.scatterplot(data=survival, x='Values', y='P_left',  color='C3', s=point_size, ax=ax).set_title(plot_title);
+        sns.scatterplot(data=survival_func, x='Values', y='P_right', color='C0', s=point_size, ax=ax).set_title(plot_title);
+        sns.scatterplot(data=survival_func, x='Values', y='P_left',  color='C3', s=point_size, ax=ax).set_title(plot_title);
         ax.legend(['Right', 'Left']);
     
     if (distribution_right is not None) | (distribution_left is not None):
@@ -194,7 +194,7 @@ def plot_twosided_survival_function(series, tail_zoom=False, distribution_right=
     ax.grid(b=True, which='major')
     ax.grid(b=True, which='minor')
         
-    return survival, ax
+    return survival_func, ax
 
 
 
@@ -211,8 +211,8 @@ def plot_empirical_kappa_n(series, n_bootstrapping=10000, n_values=list(range(20
     series_right = cleaned_series.loc[cleaned_series >= 0]
     series_left  = cleaned_series.loc[cleaned_series <  0]
 
-    y_right = [kappa.kappa_n(series_right, n, n_bootstrapping=n_bootstrapping) for n in n_values]
-    y_left  = [kappa.kappa_n(series_left , n, n_bootstrapping=n_bootstrapping) for n in n_values]
+    y_right = [kappa_metric.kappa_n(series_right, n, n_bootstrapping=n_bootstrapping) for n in n_values]
+    y_left  = [kappa_metric.kappa_n(series_left , n, n_bootstrapping=n_bootstrapping) for n in n_values]
     
     
     with sns.axes_style('whitegrid'):

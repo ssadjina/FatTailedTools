@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 
 
 
+from FatTailedTools.survival import get_survival_function
+from FatTailedTools.plotting import plot_survival_function
+
+
+
 def get_tail_start(series, tail_start_mad):
     '''
     Returns the start of the tail of 'series' based on 'tail_start_mad'.
@@ -14,9 +19,6 @@ def get_tail_start(series, tail_start_mad):
     return tail_start_mad * series.abs().mad()
 
 
-
-from FatTailedTools.plotting import plot_survival_function
-from FatTailedTools.survival import get_survival_function
 
 def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
     '''

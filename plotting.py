@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 
 
 
+from FatTailedTools.survival import get_survival_function
+
+
+
 def plot_histgrams(series, distribution=None):
     '''
     Plots two histograms of a Pandas Series, one on linear axis and one on logarithmic axis.
@@ -72,8 +76,6 @@ def max_sum_plot(series):
     fig.suptitle('Maximum-to-Sum Plot');
     
     
-    
-from FatTailedTools.survival import get_survival_function
 
 def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(10, 5), point_size=5, title_annotation=None):
     '''

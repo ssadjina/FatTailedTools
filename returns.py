@@ -20,6 +20,14 @@ def get_log_returns(series, periods=1):
 
 
 
+def get_returns_from_log_returns(series):
+    '''
+    Converts log returns to returns
+    '''
+    return np.exp(series) - 1
+
+
+
 def get_max_drawdowns(series, n, use_log=True):
     '''
     Returns the maximum drawdowns of a Pandas Series using "n" periods.

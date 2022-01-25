@@ -117,7 +117,7 @@ def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, n_t
                 
             # Otherwise estimate with tail fit
             else:
-                result = get_tail_survival_probability_from_alpha_fit(subsample, X, tail_start_mad=tail_start_mad, plot=False)
+                result = get_tail_survival_probability(subsample, X, tail_start_mad=tail_start_mad, plot=False)
                 
             plt.show();
             results.append(result)

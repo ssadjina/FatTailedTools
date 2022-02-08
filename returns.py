@@ -45,7 +45,7 @@ def get_max_drawdowns(series, n, use_log=True):
     cleaned_series = series.dropna()
     
     # Calculate the max drawdown in the past window days for each day in the series.
-    Roll_Max = cleaned_series.rolling(n, min_periods=1).max()
+    Roll_Max = cleaned_series.rolling(str(n) + 'd', min_periods=1).max()
     
     if use_log:
         Daily_Drawdown = np.log(cleaned_series/Roll_Max)
@@ -66,7 +66,7 @@ def get_max_drawups(series, n, use_log=True):
     cleaned_series = series.dropna()
     
     # Calculate the max drawup in the past window days for each day in the series.
-    Roll_Min = cleaned_series.rolling(n, min_periods=1).min()
+    Roll_Min = cleaned_series.rolling(str(n) + 'd', min_periods=1).min()
     
     if use_log:
         Daily_Drawup = np.log(cleaned_series/Roll_Min)

@@ -51,7 +51,19 @@ def get_tail_survival_probability(series, X, tail_start_mad=2.5, plot=True):
     alpha_fit, loc = alpha.fit_alpha_linear(series, return_loc=True, tail_start_mad=tail_start_mad, plot=plot)
     
     # Probability that x >= X
-    probability = get_tail_survival_probability_from_alpha_fit(X, alpha_fit, loc, tail_start=tail_start)
+            
+    # If X is not in tail (smaller)...
+    if X < tail_start:
+        
+        # Get survival function...
+        survival = get_survival_function(series, inclusive=True)
+        
+        # ...and estimate P as smallest P for any x smaller than X
+        probability = survival.loc[survival['Values'] < X, 'P'].min()
+        
+    # Otherwise estimate from tail fit
+    else:
+        probability = get_tail_survival_probability_from_alpha_fit(X, alpha_fit, loc, tail_start=tail_start)
     
     # Extend plot of the fitted function
     if plot:

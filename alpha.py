@@ -64,7 +64,7 @@ def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
         
         # Legend and title
         ax.legend(['Data', 'Tail', 'Fit (MSE = {:.2f})'.format(mse_error)]);
-        plt.title('Tail exponent fitted to tail (alpha = {:.2f}, loc = {:.2f})'.format(tail, location));
+        plt.title('Tail exponent for {} fitted to tail (alpha = {:.2f}, loc = {:.2f})'.format(series.name, tail, location));
         
     # Construct result
     result = tail, location if return_loc else tail

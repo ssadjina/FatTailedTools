@@ -99,11 +99,12 @@ def fit_alpha(series, plot=True):
 
 import seaborn as sns
 
-def fit_alpha_subsampling(series, frac=0.7, n_subsets=300, n_tail_start_samples=1, plot=True, return_loc=False):
+def fit_alpha_subsampling(series, frac=0.7, n_subsets=300, n_tail_start_samples=1, tail_start_mad_mu=2.5, plot=True, return_loc=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
     Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
     If return_loc is True, also returns where the tail of the distribution is assumed to start (using random subsampling with 'n_tail_start_samples' samples per subset).
+    'tail_start_mad_mu' sets the mean when drawing randomly for where the tail is assumed to start (in units of mean average deviations).
     '''
     
     # Set up lists
@@ -114,7 +115,7 @@ def fit_alpha_subsampling(series, frac=0.7, n_subsets=300, n_tail_start_samples=
     # Subsample and fit
     for subsample in [series.sample(frac=frac) for i in range(n_subsets)]:
         
-        for tail_start_mad in np.random.normal(2.5, 0.5, n_tail_start_samples):
+        for tail_start_mad in np.random.normal(tail_start_mad_mu, 0.5, n_tail_start_samples):
             
             _results_both.append(subsample.abs().agg(fit_alpha_linear, tail_start_mad=tail_start_mad, plot=False, return_loc=True))
             _results_left.append(subsample.where(subsample  < 0).abs().agg(fit_alpha_linear, tail_start_mad=tail_start_mad, plot=False, return_loc=True))

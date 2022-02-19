@@ -96,7 +96,7 @@ def get_tail_survival_probability_from_alpha_fit(X, alpha_fit, loc, tail_start):
 import seaborn as sns
 from matplotlib.ticker import PercentFormatter
 
-def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, n_tail_start_samples=1, plot=True, title_annotation=None):
+def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, n_tail_start_samples=1, tail_start_mad_mu=2.5, plot=True, title_annotation=None):
     '''
     Estimates the empirical survival probability for x >= 'X' using subsampling.
     Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
@@ -113,7 +113,7 @@ def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, n_t
     for subsample in [series.sample(frac=frac) for i in range(n_subsets)]:
         
         # Choose tail_start_mad
-        for tail_start_mad in np.random.normal(2.5, 0.5, n_tail_start_samples):
+        for tail_start_mad in np.random.normal(tail_start_mad_mu, 0.5, n_tail_start_samples):
             
             # Get estimate for where tail starts
             tail_start = alpha.get_tail_start(subsample, tail_start_mad)

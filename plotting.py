@@ -11,7 +11,7 @@ from FatTailedTools import kappa_metric
 
 
 
-def plot_histgrams(series, distribution=None):
+def plot_histograms(series, distribution=None):
     '''
     Plots two histograms of a Pandas Series, one on linear axis and one on logarithmic axis.
     A scipy.stats distribution object can be passed via "distribution" to also plot the PDF.

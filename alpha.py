@@ -75,7 +75,7 @@ def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
 
 from scipy.stats import t
 
-def fit_alpha(series, plot=True, return_additional_params=False):
+def fit_alpha(series, plot=True, return_additional_params=False, **kwargs):
     '''
     Estimates the tail parameter by fitting a Studend-T to the data.
     If the passed data is from a one-sided distribution, it will first be mirrored at 0 to make it symmetrical.
@@ -87,7 +87,7 @@ def fit_alpha(series, plot=True, return_additional_params=False):
         series = pd.concat([-series.dropna().abs(), series.dropna().abs()])
 
     # Fit the distribution
-    params = t.fit(series.dropna())
+    params = t.fit(series.dropna(), **kwargs)
     
     if plot:
         _, ax = plotting.plot_survival_function(series, distribution=(t, params));

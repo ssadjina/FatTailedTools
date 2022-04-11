@@ -36,19 +36,19 @@ def get_survival_function(series, inclusive=True):
 
 
 
-def get_tail_survival_probability(series, X, tail_start_mad=2.5, plot=True):
+def get_tail_survival_probability(series, X, tail_frac=0.1, plot=True):
     '''
     Returns the empirical survival probability for x >= 'X'.
     Uses a linear fit of the tail of the log-log survival function of the distribution given by 'series'.
-    'tail_start_mad' gives the location of the start of the tail in mean absolute deviations.
+    'tail_frac' defines where the tail starts in terms of the fraction of data used (from largest to smallest).
     If 'plot' then the linear fit and the calculated probability are visualized.
     '''
     
     # Get start of tail and check that X is in tail
-    tail_start = alpha.get_tail_start(series, tail_start_mad)
+    tail_start = alpha.get_tail_start(series, tail_frac)
     
     # Fit tail
-    alpha_fit, loc = alpha.fit_alpha_linear(series, return_loc=True, tail_start_mad=tail_start_mad, plot=plot)
+    alpha_fit, loc = alpha.fit_alpha_linear(series, return_loc=True, tail_frac=tail_frac, plot=plot)
     
     # Probability that x >= X
             
@@ -96,11 +96,10 @@ def get_tail_survival_probability_from_alpha_fit(X, alpha_fit, loc, tail_start):
 import seaborn as sns
 from matplotlib.ticker import PercentFormatter
 
-def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, n_tail_start_samples=1, tail_start_mad_mu=2.5, plot=True, title_annotation=None):
+def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, tail_frac=0.1, plot=True, title_annotation=None):
     '''
     Estimates the empirical survival probability for x >= 'X' using subsampling.
     Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
-    Also uses random subsampling with 'n_tail_start_samples' samples per subset to vary the start of the tail.
     Depending on the location of 'X', either uses a linear fit of the tail of the log-log survival function 
     of the distribution given by 'series', or a naive estimate using the empirical survival probabilities.
     If 'plot' the shows histogram of the results with a 'title_annotation' if given.
@@ -111,28 +110,25 @@ def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, n_t
 
     # Subsample
     for subsample in [series.sample(frac=frac) for i in range(n_subsets)]:
+            
+        # Get estimate for where tail starts
+        tail_start = alpha.get_tail_start(subsample, tail_frac)
         
-        # Choose tail_start_mad
-        for tail_start_mad in np.random.normal(tail_start_mad_mu, 0.5, n_tail_start_samples):
+        # If X is not in tail (smaller)...
+        if X < tail_start:
             
-            # Get estimate for where tail starts
-            tail_start = alpha.get_tail_start(subsample, tail_start_mad)
+            # Get survival function...
+            survival = get_survival_function(subsample, inclusive=True)
             
-            # If X is not in tail (smaller)...
-            if X < tail_start:
-                
-                # Get survival function...
-                survival = get_survival_function(subsample, inclusive=True)
-                
-                # ...and estimate P as smallest P for any x smaller than X
-                result = survival.loc[survival['Values'] < X, 'P'].min()
-                
-            # Otherwise estimate with tail fit
-            else:
-                result = get_tail_survival_probability(subsample, X, tail_start_mad=tail_start_mad, plot=False)
-                
-            plt.show();
-            results.append(result)
+            # ...and estimate P as smallest P for any x smaller than X
+            result = survival.loc[survival['Values'] < X, 'P'].min()
+            
+        # Otherwise estimate with tail fit
+        else:
+            result = get_tail_survival_probability(subsample, X, tail_frac=tail_frac, plot=False)
+            
+        plt.show();
+        results.append(result)
         
     results = pd.Series(results)
     

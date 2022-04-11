@@ -158,3 +158,64 @@ def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac=0.1,
     result = alphas if return_loc else alphas.loc[:, (slice(None), 'Tail Exponent')]
     
     return result
+
+
+
+def max_likelihood_pareto_alpha(series, min_samples=5, plot=False):
+    '''
+    Estimates the maximum likelihood for the tail exponent of a Pareto distribution.
+    If 'plot' visualizes the convergence of the estimator with increasing number of samples.
+    'min_samples' determines the number of samples required. 
+    '''
+    
+    # Drop NAs and take absolute values
+    cleaned_series = abs(series.dropna())
+    
+    # Make sure we have enough data (relative to min_samples)
+    assert len(cleaned_series) >= min_samples, 'Too few samples (n = {}). Get more data or decrease \'min_samples\'.'.format(len(cleaned_series))
+    
+    if plot:
+    
+        # Apply maximum likelihood estimation for alpha (assuming a Pareto distribution)
+        # Do so using an expanding window starting with the largest values
+        estimation = cleaned_series.sort_values(ascending=False).expanding(min_periods=min_samples).apply(
+            lambda x: 1 / (np.log(x).mean() - np.log(x.min()))
+        )
+
+        estimation.reset_index(drop=True).plot(grid=True, linestyle='--');
+        plt.xlabel('Number of samples (descending order)');
+        plt.ylabel('alpha');
+        plt.title('Maximum Likelihood Estimation of Tail Exponent');
+        plt.hlines(y=estimation.iloc[-1], xmin=0, xmax=len(cleaned_series));
+        plt.legend(['Estimator', 'Result ({:.2f})'.format(estimation.iloc[-1])]);
+        
+        return estimation.iloc[-1]
+        
+    else:
+    
+        return 1 / (np.log(cleaned_series).mean() - np.log(cleaned_series.min()))
+
+
+    
+def max_likelihood_alpha(series, min_samples=5, plot=False, tail_frac=0.1):
+    '''
+    Estimates the maximum likelihood for the tail exponent.
+    If 'plot' visualizes the convergence of the estimator with increasing number of samples.
+    'min_samples' determines the number of samples required. 
+    'tail_frac' gives the fraction of data used (from largest to smallest) that is assumed to constitute the power law tail.
+    '''
+    
+    # Drop NAs and take absolute values
+    cleaned_series = abs(series.dropna())
+    
+    # Make sure we have enough data (relative to min_samples)
+    assert len(cleaned_series) >= np.ceil(min_samples/tail_frac), 'Too few samples (n = {}). Get more data or decrease \'min_samples\'.'.format(len(cleaned_series))   
+    
+    # Take the largest 'tail_frac' samples (assumed to constitute the tail) and estimate alpha from maximum likelihood
+    result = max_likelihood_pareto_alpha(
+        series=cleaned_series.sort_values(ascending=False).iloc[:int(len(cleaned_series)*tail_frac)],
+        min_samples=min_samples,
+        plot=plot
+    )
+    
+    return result

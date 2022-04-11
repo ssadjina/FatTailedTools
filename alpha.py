@@ -10,20 +10,22 @@ from FatTailedTools import plotting
 
 
 
-def get_tail_start(series, tail_start_mad):
+def get_tail_start(series, tail_frac=0.1):
     '''
-    Returns the start of the tail of 'series' based on 'tail_start_mad'.
-    'tail_start_mad' defines where the tail starts in terms of the mean absolute deviation (typically between 2-4 MADs).
+    Returns the start of the tail of 'series' based on 'tail_frac'.
+    'tail_frac' defines where the tail starts in terms of the fraction of data used (from largest to smallest).
     '''
     
-    return tail_start_mad * series.abs().mad()
+    cleaned_series = series.dropna().abs()
+    
+    return cleaned_series.sort_values(ascending=False).iloc[:int(np.ceil(len(cleaned_series)*tail_frac))].iloc[-1]
 
 
 
-def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
+def fit_alpha_linear(series, tail_frac=0.1, plot=True, return_loc=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
-    'tail_start_mad' defines where the tail starts in terms of the mean absolute deviation (typically between 2-4 MADs).
+    'tail_frac' defines where the tail starts in terms of the fraction of data used (from largest to smallest).
     The estimated location of the Pareto (with the estimated tail exponent) will also re returned if 'return_loc' is True.
     '''
     
@@ -34,7 +36,7 @@ def fit_alpha_linear(series, tail_start_mad=2.5, plot=True, return_loc=False):
         survival_func = survival.get_survival_function(series)
     
     # Estimate tail start (= everything beyond 'tail_start_mad' mean absolute deviations)
-    tail_start = get_tail_start(series, tail_start_mad)
+    tail_start = get_tail_start(series, tail_frac=tail_frac)
     
     # Get tail
     survival_tail = np.log10(survival_func.loc[survival_func['Values'] >= tail_start].iloc[:-1])

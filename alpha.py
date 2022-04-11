@@ -219,3 +219,37 @@ def max_likelihood_alpha(series, min_samples=5, plot=False, tail_frac=0.1):
     )
     
     return result
+
+
+
+def max_likelihood_alpha_subsampling(series, frac=0.7, n_subsets=300, tail_frac=0.1, plot=True):
+    '''
+    Estimates the tail parameter via maximum likelihood for alpha assuming a power law tail.
+    Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
+    'tail_frac' defines where the tail starts in terms of the fraction of data used (from largest to smallest).
+    '''
+    
+    # Set up lists
+    _results = []
+    
+    # Subsample and fit
+    for subsample in [series.dropna().sample(frac=frac) for i in range(n_subsets)]:
+        
+        _results.append(subsample.agg(max_likelihood_alpha, tail_frac=tail_frac, plot=False))
+        
+    # Assemble into DataFrame
+    results = pd.Series(_results)
+        
+    # Plot
+    if plot:
+        
+        fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+        
+        results.hist(bins=10);
+        plt.xlabel('alpha');
+        plt.title('Maximum Likelihood Estimation of Tail Exponent');
+        plt.vlines(x=results.mean(), ymin=0, ymax=plt.gca().get_ylim()[1], color='red', label='Mean ({:.2f})'.format(results.mean()));
+        plt.vlines(x=results.median(), ymin=0, ymax=plt.gca().get_ylim()[1], color='red', linestyle='--', label='Median ({:.2f})'.format(results.median()));
+        plt.legend();
+    
+    return results

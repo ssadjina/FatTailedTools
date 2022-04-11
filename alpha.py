@@ -247,7 +247,7 @@ def max_likelihood_alpha_subsampling(series, frac=0.7, n_subsets=300, tail_frac=
         
         results.hist(bins=10);
         plt.xlabel('alpha');
-        plt.title('Maximum Likelihood Estimation of Tail Exponent');
+        plt.title('Maximum Likelihood Estimation of Tail Exponent for {} with random subsamples'.format(series.name));
         plt.vlines(x=results.mean(), ymin=0, ymax=plt.gca().get_ylim()[1], color='red', label='Mean ({:.2f})'.format(results.mean()));
         plt.vlines(x=results.median(), ymin=0, ymax=plt.gca().get_ylim()[1], color='red', linestyle='--', label='Median ({:.2f})'.format(results.median()));
         plt.legend();

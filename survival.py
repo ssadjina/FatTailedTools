@@ -137,16 +137,19 @@ def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, tai
         
     results = pd.Series(results)
     
+    # Plot
     if plot:
-        ax = sns.histplot(data=results, stat='probability', bins=10);
-
-        series_name = series.name
-        if title_annotation is not None:
-            series_name += ' {}'.format(title_annotation)
         
-        ax.set_title('Survival probability P(|x| >= {:.3f})\n{}\nMedian = {:.2%} | IQR = {:.2%}'.format(X, series_name, results.median(), results.describe()['75%'] - results.describe()['25%']));
+        fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+        
+        results.hist(bins=10);
+        plt.xlabel('Survival probability');
+        plt.title('Survival probability P(|x| >= {:.3f}) ({})'.format(X, series.name));
+        plt.vlines(x=results.mean(), ymin=0, ymax=plt.gca().get_ylim()[1], color='red', label='Mean ({:.2%})'.format(results.mean()));
+        plt.vlines(x=results.median(), ymin=0, ymax=plt.gca().get_ylim()[1], color='red', linestyle='--', label='Median ({:.2%})'.format(results.median()));
+        plt.legend();
+        
         ax.xaxis.set_major_formatter(PercentFormatter(1))
     
-        plt.show();
     
     return results

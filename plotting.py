@@ -238,7 +238,7 @@ def plot_lindy_test(series):
     See Nassim Taleb's "Statistical Consequences of Fat Tails".
     '''
     
-    cleaned_series = series.dropna()
+    cleaned_series = -series.abs().dropna()
     
     lindy = pd.DataFrame(np.linspace(0.01, max(abs(cleaned_series)), len(cleaned_series)), index=cleaned_series.index, columns=['k'])
     

@@ -36,7 +36,7 @@ def get_survival_function(series, inclusive=True):
 
 
 
-def get_tail_survival_probability(series, X, tail_frac=0.1, plot=True):
+def get_tail_survival_probability(series, X, tail_frac=None, plot=True):
     '''
     Returns the empirical survival probability for x >= 'X'.
     Uses a linear fit of the tail of the log-log survival function of the distribution given by 'series'.
@@ -96,7 +96,7 @@ def get_tail_survival_probability_from_alpha_fit(X, alpha_fit, scale, tail_start
 import seaborn as sns
 from matplotlib.ticker import PercentFormatter
 
-def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, tail_frac_range=(0.05, 0.15), plot=True, title_annotation=None):
+def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, tail_frac_range=None, plot=True, title_annotation=None):
     '''
     Estimates the empirical survival probability for x >= 'X' using subsampling.
     Uses 'n_subsets' subsamples to average results over subsets with a fraction of samples kept.
@@ -109,11 +109,16 @@ def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, tai
     
     # Prepare array to save results
     results = []
+    
+    # When no tail_frac_range is given a simple heuristic is used:
+    if tail_frac_range is None:
+        tail_frac_midle = alpha.get_tail_frac_guess(series)
+        tail_frac_range = (tail_frac_midle/1.5, tail_frac_midle*1.5)
 
     # Subsample
     for subsample in [series.sample(frac=frac) for i in range(n_subsets)]:
         
-        # Randomly choose a tail start from a uniform random distribution between 1% and 20%
+        # Randomly choose a tail start from a uniform random distribution
         tail_frac = np.random.uniform(*tail_frac_range)
             
         # Get estimate for where tail starts

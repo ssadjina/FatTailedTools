@@ -10,7 +10,7 @@ from FatTailedTools import plotting
 
 
 
-def get_tail_start(series, tail_frac=0.1):
+def get_tail_start(series, tail_frac=None):
     '''
     Returns the start of the tail of 'series' based on 'tail_frac'.
     'tail_frac' defines where the tail starts in terms of the fraction of data used (from largest to smallest).
@@ -18,11 +18,15 @@ def get_tail_start(series, tail_frac=0.1):
     
     cleaned_series = series.dropna().abs()
     
+    # When no tail_frac is given a simple heuristic is used:
+    if tail_frac is None:
+        tail_frac = get_tail_frac_guess(series)
+    
     return cleaned_series.sort_values(ascending=False).iloc[:int(np.ceil(len(cleaned_series)*tail_frac))].iloc[-1]
 
 
 
-def fit_alpha_linear(series, tail_frac=0.1, plot=True, return_scale=False):
+def fit_alpha_linear(series, tail_frac=None, plot=True, return_scale=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
     'tail_frac' defines where the tail starts in terms of the fraction of data used (from largest to smallest).
@@ -34,6 +38,10 @@ def fit_alpha_linear(series, tail_frac=0.1, plot=True, return_scale=False):
         survival_func, ax = plotting.plot_survival_function(series, tail_zoom=False)
     else:
         survival_func = survival.get_survival_function(series)
+    
+    # When no tail_frac is given a simple heuristic is used:
+    if tail_frac is None:
+        tail_frac = get_tail_frac_guess(series)
     
     # Estimate tail start (= everything beyond 'tail_start_mad' mean absolute deviations)
     tail_start = get_tail_start(series, tail_frac=tail_frac)
@@ -101,7 +109,7 @@ def fit_alpha(series, plot=True, return_additional_params=False, **kwargs):
 
 import seaborn as sns
 
-def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac_range=(0.05, 0.15), plot=True, return_scale=False):
+def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac_range=None, plot=True, return_scale=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
     Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
@@ -113,10 +121,15 @@ def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac_rang
     # Set up lists
     _results = []
     
+    # When no tail_frac_range is given a simple heuristic is used:
+    if tail_frac_range is None:
+        tail_frac_midle = get_tail_frac_guess(series)
+        tail_frac_range = (tail_frac_midle/1.5, tail_frac_midle*1.5)
+    
     # Subsample and fit
     for subsample in [series.sample(frac=frac) for i in range(n_subsets)]:
         
-        # Randomly choose a tail start from a uniform random distribution between 1% and 20%
+        # Randomly choose a tail start from a uniform random distribution
         tail_frac = np.random.uniform(*tail_frac_range)
         
         _results.append(subsample.abs().agg(fit_alpha_linear, tail_frac=tail_frac, plot=False, return_scale=True))
@@ -237,7 +250,7 @@ def max_likelihood_pareto_alpha(series, min_samples=5, plot=False):
 
 
     
-def max_likelihood_alpha(series, min_samples=5, plot=False, tail_frac=0.1):
+def max_likelihood_alpha(series, min_samples=5, plot=False, tail_frac=None):
     '''
     Estimates the maximum likelihood for the tail exponent.
     If 'plot' visualizes the convergence of the estimator with increasing number of samples.
@@ -247,6 +260,10 @@ def max_likelihood_alpha(series, min_samples=5, plot=False, tail_frac=0.1):
     
     # Drop NAs and take absolute values
     cleaned_series = abs(series.dropna())
+    
+    # When no tail_frac is given a simple heuristic is used:
+    if tail_frac is None:
+        tail_frac = get_tail_frac_guess(series)
     
     # Make sure we have enough data (relative to min_samples)
     assert len(cleaned_series) >= np.ceil(min_samples/tail_frac), 'Too few samples (n = {}). Get more data or decrease \'min_samples\'.'.format(len(cleaned_series))   
@@ -262,7 +279,21 @@ def max_likelihood_alpha(series, min_samples=5, plot=False, tail_frac=0.1):
 
 
 
-def max_likelihood_alpha_subsampling(series, frac=0.7, n_subsets=300, tail_frac_range=(0.05, 0.15), plot=True):
+def get_tail_frac_guess(series):
+    '''
+    Uses a simple heuristic to estimate where the tail starts in terms of the fraction of samples in the tail.
+    '''
+    
+    # Drop NAs
+    cleaned_series = series.dropna()
+    
+    tail_frac = np.sqrt(1000/len(cleaned_series))*0.03
+    
+    return tail_frac
+    
+
+
+def max_likelihood_alpha_subsampling(series, frac=0.7, n_subsets=300, tail_frac_range=None, plot=True):
     '''
     Estimates the tail parameter via maximum likelihood for alpha assuming a power law tail.
     Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
@@ -273,10 +304,15 @@ def max_likelihood_alpha_subsampling(series, frac=0.7, n_subsets=300, tail_frac_
     # Set up lists
     _results = []
     
+    # When no tail_frac_range is given a simple heuristic is used:
+    if tail_frac_range is None:
+        tail_frac_midle = get_tail_frac_guess(series)
+        tail_frac_range = (tail_frac_midle/1.5, tail_frac_midle*1.5)
+    
     # Subsample and fit
     for subsample in [series.dropna().sample(frac=frac) for i in range(n_subsets)]:
         
-        # Randomly choose a tail start from a uniform random distribution between 1% and 20%
+        # Randomly choose a tail start from a uniform random distribution
         tail_frac = np.random.uniform(*tail_frac_range)
         
         _results.append(subsample.agg(max_likelihood_alpha, tail_frac=tail_frac, min_samples=2, plot=False))

@@ -22,11 +22,11 @@ def get_tail_start(series, tail_frac=0.1):
 
 
 
-def fit_alpha_linear(series, tail_frac=0.1, plot=True, return_loc=False):
+def fit_alpha_linear(series, tail_frac=0.1, plot=True, return_scale=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
     'tail_frac' defines where the tail starts in terms of the fraction of data used (from largest to smallest).
-    The estimated location of the Pareto (with the estimated tail exponent) will also re returned if 'return_loc' is True.
+    The estimated scale of the Pareto (with the estimated tail exponent) will also re returned if 'return_scale' is True.
     '''
     
     # Get survival function values
@@ -45,9 +45,9 @@ def fit_alpha_linear(series, tail_frac=0.1, plot=True, return_loc=False):
     tail_fit = np.polyfit(survival_tail['Values'], survival_tail['P'], 1)
     lin_func = np.poly1d(tail_fit)
     
-    # Get tail parameter and location/scale
+    # Get tail parameter and scale of the Pareto distribution
     tail = -tail_fit[0]
-    location = (1 - tail_fit[1]) / tail_fit[0]
+    scale = 10**(- tail_fit[1] / tail_fit[0])
     
     # Get MSE (mean squared error)
     mse_error = np.mean(np.square(np.subtract(lin_func(survival_tail['Values']), survival_tail['Values'])))
@@ -66,10 +66,10 @@ def fit_alpha_linear(series, tail_frac=0.1, plot=True, return_loc=False):
         
         # Legend and title
         ax.legend(['Data', 'Tail', 'Fit (MSE = {:.2f})'.format(mse_error)]);
-        plt.title('Tail exponent for {} fitted to tail (alpha = {:.2f}, loc = {:.2f})'.format(series.name, tail, location));
+        plt.title('Tail exponent for {} fitted to tail (alpha = {:.2f}, scale = {:.4f})'.format(series.name, tail, scale));
         
     # Construct result
-    result = tail, location if return_loc else tail
+    result = tail, scale if return_scale else tail
     
     return result
 
@@ -101,11 +101,11 @@ def fit_alpha(series, plot=True, return_additional_params=False, **kwargs):
 
 import seaborn as sns
 
-def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac_range=(0.05, 0.15), plot=True, return_loc=False):
+def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac_range=(0.05, 0.15), plot=True, return_scale=False):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
     Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
-    If return_loc is True, also returns where the tail of the distribution is assumed to start.
+    If return_scale is True, also returns the scale of the distribution.
     'tail_frac_range' defines what uniform range to draw from as a guess for where the tail starts
     in terms of the fraction of data used (from largest to smallest).
     '''
@@ -119,10 +119,10 @@ def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac_rang
         # Randomly choose a tail start from a uniform random distribution between 1% and 20%
         tail_frac = np.random.uniform(*tail_frac_range)
         
-        _results.append(subsample.abs().agg(fit_alpha_linear, tail_frac=tail_frac, plot=False, return_loc=True))
+        _results.append(subsample.abs().agg(fit_alpha_linear, tail_frac=tail_frac, plot=False, return_scale=True))
         
     # Assemble into DataFrame
-    results = pd.DataFrame(_results, columns=['Tail Exponent', 'Location'])
+    results = pd.DataFrame(_results, columns=['Tail Exponent', 'Scale'])
     
     # Plot
     if plot:
@@ -137,7 +137,7 @@ def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac_rang
         plt.legend();
         
     # Construct result
-    return results if return_loc else results.loc[:, ['Tail Exponent']]
+    return results if return_scale else results.loc[:, ['Tail Exponent']]
 
 
 

@@ -48,7 +48,7 @@ def get_tail_survival_probability(series, X, tail_frac=0.1, plot=True):
     tail_start = alpha.get_tail_start(series, tail_frac)
     
     # Fit tail
-    alpha_fit, loc = alpha.fit_alpha_linear(series, return_loc=True, tail_frac=tail_frac, plot=plot)
+    alpha_fit, scale = alpha.fit_alpha_linear(series, return_scale=True, tail_frac=tail_frac, plot=plot)
     
     # Probability that x >= X
             
@@ -63,7 +63,7 @@ def get_tail_survival_probability(series, X, tail_frac=0.1, plot=True):
         
     # Otherwise estimate from tail fit
     else:
-        probability = get_tail_survival_probability_from_alpha_fit(X, alpha_fit, loc, tail_start=tail_start)
+        probability = get_tail_survival_probability_from_alpha_fit(X, alpha_fit, scale, tail_start=tail_start)
     
     # Extend plot of the fitted function
     if plot:
@@ -75,9 +75,9 @@ def get_tail_survival_probability(series, X, tail_frac=0.1, plot=True):
 
 
 
-def get_tail_survival_probability_from_alpha_fit(X, alpha_fit, loc, tail_start):
+def get_tail_survival_probability_from_alpha_fit(X, alpha_fit, scale, tail_start):
     '''
-    Returns the probability that x >= 'X' given the tail exponent 'alpha_fit' and the location 'loc'.
+    Returns the probability that x >= 'X' given the tail exponent 'alpha_fit' and the scale 'scale'.
     'tail_start' must be passed to make sure that 'X' actually is in the tail.
     
     '''
@@ -87,7 +87,7 @@ def get_tail_survival_probability_from_alpha_fit(X, alpha_fit, loc, tail_start):
         warnings.warn('X={} is not in the tail (which is estimated to start at {}). Returning \'np.nan\''.format(X, tail_start))
         return np.nan
     
-    probability = 10**(-alpha_fit * np.log10(X) + (1 + loc * alpha_fit))
+    probability = 10**(alpha_fit * (np.log10(scale/X)))
     
     return np.clip(probability, a_min=0, a_max=1)
 

@@ -96,10 +96,12 @@ def get_tail_survival_probability_from_alpha_fit(X, alpha_fit, loc, tail_start):
 import seaborn as sns
 from matplotlib.ticker import PercentFormatter
 
-def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, tail_frac=0.1, plot=True, title_annotation=None):
+def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, tail_frac_range=(0.05, 0.15), plot=True, title_annotation=None):
     '''
     Estimates the empirical survival probability for x >= 'X' using subsampling.
-    Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
+    Uses 'n_subsets' subsamples to average results over subsets with a fraction of samples kept.
+    'tail_frac_range' defines what uniform range to draw from as a guess for where the tail starts
+    in terms of the fraction of data used (from largest to smallest).
     Depending on the location of 'X', either uses a linear fit of the tail of the log-log survival function 
     of the distribution given by 'series', or a naive estimate using the empirical survival probabilities.
     If 'plot' the shows histogram of the results with a 'title_annotation' if given.
@@ -110,6 +112,9 @@ def get_survival_probability_subsampling(series, X, frac=0.7, n_subsets=300, tai
 
     # Subsample
     for subsample in [series.sample(frac=frac) for i in range(n_subsets)]:
+        
+        # Randomly choose a tail start from a uniform random distribution between 1% and 20%
+        tail_frac = np.random.uniform(*tail_frac_range)
             
         # Get estimate for where tail starts
         tail_start = alpha.get_tail_start(subsample, tail_frac)

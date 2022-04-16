@@ -255,18 +255,13 @@ def plot_lindy_test(series):
 
 
 
-def mean_excess_plot(series, points=None):
+def mean_excess_plot(series):
     '''
     Plots mean excess of 'series' with varying thresholds.
-    Uses 'points' points equally spaced between series min and max for plotting.
     '''
 
     # Clean and take absolute values
     cleaned_series = series.dropna().abs()
-    
-    # Set points for plotting
-    if points is None:
-        points = len(cleaned_series)
     
     # Set up list
     _x = cleaned_series.sort_values(ascending=True).values
@@ -288,4 +283,5 @@ def mean_excess_plot(series, points=None):
     plt.plot(_x, _y, linestyle='', marker='.');
     plt.title('Mean Excess Plot');
     plt.xlabel('Threshold');
-    plt.ylabel('Mean Excess')
+    plt.ylabel('Mean Excess');
+    plt.show()

@@ -4,6 +4,8 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+figsize=(10, 5)
+
 
 
 from FatTailedTools import survival
@@ -16,7 +18,7 @@ def plot_histograms(series, distribution=None):
     Plots two histograms of a Pandas Series, one on linear axis and one on logarithmic axis.
     A scipy.stats distribution object can be passed via "distribution" to also plot the PDF.
     '''
-    fig, ax = plt.subplots(2, 1, figsize=(15, 10));
+    fig, ax = plt.subplots(2, 1, figsize=(figsize[0], figsize[0]));
     
     # Plot linear
     sns.histplot(data=series, stat='probability' if distribution is None else 'density', kde=True if distribution is None else False, ax=ax[0]);
@@ -39,12 +41,12 @@ def plot_gumbel_test(series):
     Regardless of the underlying distribution, the probability that a sample is larger than any of the N samples seen before is 1/N.
     '''
     
-    cleaned_series = series.dropna()
+    cleaned_series = series.dropna().reset_index(drop=True)
     
     N1t_gains = 1 + (cleaned_series.iloc[1:] > cleaned_series.iloc[1:].shift(1).cummax()).cumsum()
     N1t_losses = 1 + (cleaned_series.iloc[1:] < cleaned_series.iloc[1:].shift(1).cummin()).cumsum()
     
-    N1t_gains.plot(color='C0', figsize=(15, 8));
+    N1t_gains.plot(color='C0', figsize=figsize);
     N1t_losses.plot(color='C3');
     plt.title('Gumbel record test');
     
@@ -63,7 +65,7 @@ def max_sum_plot(series):
     
     cleaned_series = abs(series.dropna())
     
-    fig, ax = plt.subplots(2, 2, figsize=(15, 10));
+    fig, ax = plt.subplots(2, 2, figsize=(figsize[0], figsize[0]));
     
     for idx, axis in enumerate(ax.reshape(-1)): 
         
@@ -216,7 +218,7 @@ def plot_empirical_kappa_n(series, n_bootstrapping=10000, n_values=list(range(20
     
     
     with sns.axes_style('whitegrid'):
-        fig, ax = plt.subplots(1, figsize=(10, 5));
+        fig, ax = plt.subplots(1, figsize=figsize);
         
         sns.scatterplot(x=n_values, y=y_right, color='C0', s=9, ax=ax);
         sns.scatterplot(x=n_values, y=y_left , color='C3', s=9, ax=ax);
@@ -246,7 +248,44 @@ def plot_lindy_test(series):
     lindy['Lindy'] = lindy['k'].map(lambda k: ((-cleaned_series > k) * (-cleaned_series)).mean() / ((-cleaned_series > k).mean()) / k)
     
     # Plot
-    fig, ax = plt.subplots(1, figsize=(10, 5));
+    fig, ax = plt.subplots(1, figsize=figsize);
     sns.lineplot(data=lindy, x='k', y='Lindy', color='C3', ax=ax).set_title('\"Lindy Measure\"');
     
     return lindy
+
+
+
+def mean_excess_plot(series, points=None):
+    '''
+    Plots mean excess of 'series' with varying thresholds.
+    Uses 'points' points equally spaced between series min and max for plotting.
+    '''
+
+    # Clean and take absolute values
+    cleaned_series = series.dropna().abs()
+    
+    # Set points for plotting
+    if points is None:
+        points = len(cleaned_series)
+    
+    # Set up list
+    _x = cleaned_series.sort_values(ascending=True).values
+    _y = []
+    
+    for u in _x:
+        # To get the conditional expectation for X - u given that X > u, we need to:
+        # 1. Integrate P(X)*(X - u) from u to inf
+        # 2. Normalize by P(X > u) = integral of P(X) from u to inf; This is the survival function S(u)
+        
+        _part1 = ((cleaned_series > u) * (cleaned_series - u)).mean()
+        _part2 = ((cleaned_series > u)).mean()
+        
+        me = _part1 / _part2
+        
+        _y.append(me)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize);
+    plt.plot(_x, _y, linestyle='', marker='.');
+    plt.title('Mean Excess Plot');
+    plt.xlabel('Threshold');
+    plt.ylabel('Mean Excess')

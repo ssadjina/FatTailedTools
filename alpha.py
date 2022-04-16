@@ -333,3 +333,43 @@ def max_likelihood_alpha_subsampling(series, frac=0.7, n_subsets=300, tail_frac_
         plt.legend();
     
     return results
+
+
+
+def hill_estimator(series, plot=False, tail_frac=None):
+    '''
+    Estimates the tail exponent via the Hill Estimator.
+    If 'plot' visualizes the convergence of the estimator with increasing number of samples.
+    'tail_frac' gives the fraction of data used (from largest to smallest) that is assumed to constitute the power law tail.
+    '''
+    
+    # Drop NAs and take absolute values
+    cleaned_series = abs(series.dropna())
+    
+    # When no tail_frac is given a simple heuristic is used:
+    if tail_frac is None:
+        tail_frac = get_tail_frac_guess(series)
+    
+    # Make sure we have enough data (relative to min_samples)
+    assert len(cleaned_series) >= 2, 'Too few samples (n = {}). Need at least 2 samples.'.format(len(cleaned_series))   
+    
+    # Reorder data
+    cleaned_series = cleaned_series.sort_values(ascending=False).reset_index(drop=True)
+
+    # Hill estimator
+    H_estimator = np.log(cleaned_series).expanding(min_periods=2).mean() - np.log(cleaned_series)
+    
+    # Get alpha from Hill estimator
+    alpha_series = (1/H_estimator).dropna()
+    alpha = alpha_series.iloc[int(len(alpha_series)*tail_frac) - 1]
+    
+    if plot:
+
+        alpha_series.plot(grid=True, linestyle='--');
+        plt.xlabel('Number of samples (descending order)');
+        plt.ylabel('alpha');
+        plt.title('Hill Estimator for Tail Exponent');
+        plt.hlines(y=alpha, xmin=0, xmax=len(cleaned_series));
+        plt.legend(['Estimator', 'Result ({:.2f})'.format(alpha)]);
+    
+    return alpha

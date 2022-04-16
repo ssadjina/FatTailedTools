@@ -364,12 +364,12 @@ def hill_estimator(series, plot=False, tail_frac=None):
     alpha = alpha_series.iloc[int(len(alpha_series)*tail_frac) - 1]
     
     if plot:
-
+        
         alpha_series.iloc[:int(len(alpha_series)*tail_frac) - 1].plot(grid=True, linestyle='--');
         plt.xlabel('Number of samples (descending order)');
         plt.ylabel('alpha');
         plt.title('Hill Estimator for Tail Exponent');
-        plt.hlines(y=alpha, xmin=0, xmax=len(alpha_series));
+        plt.hlines(y=alpha, xmin=0, xmax=len(alpha_series.iloc[:int(len(alpha_series)*tail_frac) - 1]));
         plt.legend(['Estimator', 'Result ({:.2f})'.format(alpha)]);
     
     return alpha

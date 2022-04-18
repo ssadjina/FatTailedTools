@@ -41,19 +41,29 @@ def plot_gumbel_test(series):
     Regardless of the underlying distribution, the probability that a sample is larger than any of the N samples seen before is 1/N.
     '''
     
-    cleaned_series = series.dropna().reset_index(drop=True)
+    cleaned_series = series.dropna()
     
-    N1t_gains = 1 + (cleaned_series.iloc[1:] > cleaned_series.iloc[1:].shift(1).cummax()).cumsum()
-    N1t_losses = 1 + (cleaned_series.iloc[1:] < cleaned_series.iloc[1:].shift(1).cummin()).cumsum()
+    # Check if left/right tails are given
+    bool_left_tail  = (cleaned_series < 0).any()
+    bool_right_tail = (cleaned_series > 0).any()
+        
+    # Right tail (maxima)
+    if bool_right_tail:
+        N1t_gains = 1 + (cleaned_series.iloc[1:] > cleaned_series.iloc[1:].shift(1).cummax()).cumsum()
+        N1t_gains.plot(color='C0', figsize=figsize, label='Maxima');
     
-    N1t_gains.plot(color='C0', figsize=figsize);
-    N1t_losses.plot(color='C3');
-    plt.title('Gumbel record test');
+    # Left tail (minima)
+    if bool_left_tail:
+        N1t_losses = 1 + (cleaned_series.iloc[1:] < cleaned_series.iloc[1:].shift(1).cummin()).cumsum()
+        N1t_losses.plot(color='C3', label='Minima');
     
+    # Plot the theoretically expected (which is independent of the distribution)
     x_ticks = list(range(len(cleaned_series)))
-    sns.lineplot(x=x_ticks, y=(1 / (np.array(x_ticks) + 1)).cumsum(), color='k', linestyle='--');
+    H_t = (1 / (np.array(x_ticks) + 1)).cumsum()
+    sns.lineplot(x=cleaned_series.index, y=H_t, color='k', linestyle='--', label='Expected');
     
-    plt.legend(['Maxima', 'Minima', 'Expected']);
+    plt.title('Gumbel record test');
+    plt.legend();
     plt.xlabel('Samples');
     
 

@@ -325,7 +325,7 @@ def max_likelihood_alpha_subsampling(series, frac=0.7, n_subsets=300, tail_frac_
         
         fig, ax = plt.subplots(1, 1, figsize=(6, 4))
         
-        results.hist(bins=10);
+        sns.histplot(x=results, stat='probability', binwidth=0.25, ax=ax);
         plt.xlabel('Tail Exponent alpha');
         plt.title('Maximum likelihood with random subsamples ({})'.format(series.name));
         plt.vlines(x=results.mean(), ymin=0, ymax=plt.gca().get_ylim()[1], color='red', label='Mean ({:.2f})'.format(results.mean()));

@@ -4,19 +4,41 @@ import numpy as np
 
 
 
-def get_returns(series, periods=1):
+def get_returns(series, periods='1d'):
     '''
     Calculates the returns from a given Pandas Series using period "periods"
     '''
-    return series.pct_change(periods=periods, fill_method=None).dropna()
+    
+    # Resample series over periods
+    series_resampled = series.resample(periods).last()
+    
+    # Calculate returns
+    returns = series_resampled/series_resampled.shift(1) - 1
+    
+    # Make sure the product of all returns is equal the total return over the period
+    rel_error = returns.product() * series_resampled.dropna().iloc[0] / series_resampled.dropna().iloc[-1] - 1
+    assert rel_error <= 1e-8, 'Warning! Product of returns was not equal to return over entire period (relative error: {})'.format(rel_error)
+    
+    return returns
 
 
 
-def get_log_returns(series, periods=1):
+def get_log_returns(series, periods='1d'):
     '''
     Returns the logarithmic return from a given Pandas Series using period "periods"
     '''
-    return np.log(series/series.shift(periods=periods)).dropna()
+    
+    # Resample series over periods
+    series_resampled = series.resample(periods).last()
+    
+    # Calculate log returns
+    log_returns = np.log(series_resampled/series_resampled.shift(1))
+    
+    # Make sure the sum of all log returns is equal the total log return over the period
+    rel_error = np.exp(log_returns.sum()) * series_resampled.dropna().iloc[0] / series_resampled.dropna().iloc[-1] - 1
+    assert rel_error <= 1e-8, 'Warning! Sum of log returns was not equal to log return over entire period (relative error: {})'.format(rel_error)
+    
+    return log_returns
 
 
 

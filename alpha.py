@@ -214,25 +214,26 @@ def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac_rang
 
 
 
-def max_likelihood_pareto_alpha(series, min_samples=5, plot=False):
+def max_likelihood_pareto_alpha(series, loc=0, min_samples=5, plot=False):
     '''
     Estimates the maximum likelihood for the tail exponent of a Pareto distribution.
+    A location 'loc' can be specified which shifts the entire distribution.
     If 'plot' visualizes the convergence of the estimator with increasing number of samples.
-    'min_samples' determines the number of samples required. 
+    'min_samples' determines the number of samples required.
     '''
-    
+
     # Drop NAs and take absolute values
     cleaned_series = abs(series.dropna())
-    
+
     # Make sure we have enough data (relative to min_samples)
     assert len(cleaned_series) >= min_samples, 'Too few samples (n = {}). Get more data or decrease \'min_samples\'.'.format(len(cleaned_series))
-    
+
     if plot:
-    
+
         # Apply maximum likelihood estimation for alpha (assuming a Pareto distribution)
         # Do so using an expanding window starting with the largest values
         estimation = cleaned_series.sort_values(ascending=False).expanding(min_periods=min_samples).apply(
-            lambda x: 1 / (np.log(x).mean() - np.log(x.min()))
+            lambda x: 1 / (np.log(x - loc).mean() - np.log(x.min() - loc))
         )
 
         estimation.reset_index(drop=True).plot(grid=True, linestyle='--');
@@ -241,18 +242,19 @@ def max_likelihood_pareto_alpha(series, min_samples=5, plot=False):
         plt.title('Maximum Likelihood Estimation of Tail Exponent');
         plt.hlines(y=estimation.iloc[-1], xmin=0, xmax=len(cleaned_series));
         plt.legend(['Estimator', 'Result ({:.2f})'.format(estimation.iloc[-1])]);
-        
+
         return estimation.iloc[-1]
-        
+
     else:
-    
-        return 1 / (np.log(cleaned_series).mean() - np.log(cleaned_series.min()))
+
+        return 1 / (np.log(cleaned_series - loc).mean() - np.log(cleaned_series.min() - loc))
 
 
     
-def max_likelihood_alpha(series, min_samples=5, plot=False, tail_frac=None):
+def max_likelihood_alpha(series, loc=0, min_samples=5, plot=False, tail_frac=None):
     '''
     Estimates the maximum likelihood for the tail exponent.
+    A location 'loc' can be specified which shifts the entire distribution.
     If 'plot' visualizes the convergence of the estimator with increasing number of samples.
     'min_samples' determines the number of samples required. 
     'tail_frac' gives the fraction of data used (from largest to smallest) that is assumed to constitute the power law tail.
@@ -271,6 +273,7 @@ def max_likelihood_alpha(series, min_samples=5, plot=False, tail_frac=None):
     # Take the largest 'tail_frac' samples (assumed to constitute the tail) and estimate alpha from maximum likelihood
     result = max_likelihood_pareto_alpha(
         series=cleaned_series.sort_values(ascending=False).iloc[:int(len(cleaned_series)*tail_frac)],
+        loc=loc,
         min_samples=min_samples,
         plot=plot
     )
@@ -293,9 +296,10 @@ def get_tail_frac_guess(series):
     
 
 
-def max_likelihood_alpha_subsampling(series, frac=0.7, n_subsets=300, tail_frac_range=None, plot=True):
+def max_likelihood_alpha_subsampling(series, loc=0, frac=0.7, n_subsets=300, tail_frac_range=None, plot=True):
     '''
     Estimates the tail parameter via maximum likelihood for alpha assuming a power law tail.
+    A location 'loc' can be specified which shifts the entire distribution.
     Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
     'tail_frac_range' defines what uniform range to draw from as a guess for where the tail starts
     in terms of the fraction of data used (from largest to smallest).
@@ -315,7 +319,7 @@ def max_likelihood_alpha_subsampling(series, frac=0.7, n_subsets=300, tail_frac_
         # Randomly choose a tail start from a uniform random distribution
         tail_frac = np.random.uniform(*tail_frac_range)
         
-        _results.append(subsample.agg(max_likelihood_alpha, tail_frac=tail_frac, min_samples=2, plot=False))
+        _results.append(subsample.agg(max_likelihood_alpha, loc=loc, tail_frac=tail_frac, min_samples=2, plot=False))
         
     # Assemble into DataFrame
     results = pd.Series(_results)
@@ -336,40 +340,41 @@ def max_likelihood_alpha_subsampling(series, frac=0.7, n_subsets=300, tail_frac_
 
 
 
-def hill_estimator(series, plot=False, tail_frac=None):
+def hill_estimator(series, loc=0, plot=False, tail_frac=None):
     '''
     Estimates the tail exponent via the Hill Estimator.
+    A location 'loc' can be specified which shifts the entire distribution.
     If 'plot' visualizes the convergence of the estimator with increasing number of samples.
     'tail_frac' gives the fraction of data used (from largest to smallest) that is assumed to constitute the power law tail.
     '''
-    
+
     # Drop NAs and take absolute values
     cleaned_series = abs(series.dropna())
-    
+
     # When no tail_frac is given a simple heuristic is used:
     if tail_frac is None:
         tail_frac = get_tail_frac_guess(series)
-    
+
     # Make sure we have enough data (relative to min_samples)
-    assert len(cleaned_series) >= 2, 'Too few samples (n = {}). Need at least 2 samples.'.format(len(cleaned_series))   
-    
+    assert len(cleaned_series) >= 2, 'Too few samples (n = {}). Need at least 2 samples.'.format(len(cleaned_series))
+
     # Reorder data
     cleaned_series = cleaned_series.sort_values(ascending=False).reset_index(drop=True)
 
     # Hill estimator
-    H_estimator = np.log(cleaned_series).expanding(min_periods=2).mean() - np.log(cleaned_series)
-    
+    H_estimator = np.log(cleaned_series - loc).expanding(min_periods=2).mean() - np.log(cleaned_series - loc)
+
     # Get alpha from Hill estimator
     alpha_series = (1/H_estimator).dropna()
     alpha = alpha_series.iloc[int(len(alpha_series)*tail_frac) - 1]
-    
+
     if plot:
-        
+
         alpha_series.iloc[:int(len(alpha_series)*tail_frac) - 1].plot(grid=True, linestyle='--');
         plt.xlabel('Number of samples (descending order)');
         plt.ylabel('alpha');
         plt.title('Hill Estimator for Tail Exponent');
         plt.hlines(y=alpha, xmin=0, xmax=len(alpha_series.iloc[:int(len(alpha_series)*tail_frac) - 1]));
         plt.legend(['Estimator', 'Result ({:.2f})'.format(alpha)]);
-    
+
     return alpha

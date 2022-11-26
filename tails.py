@@ -1,5 +1,6 @@
 # A collection of helper functions returning parts of a distribution.
 import pandas as pd
+import numpy as np
 
 
 

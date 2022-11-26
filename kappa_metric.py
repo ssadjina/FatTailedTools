@@ -74,6 +74,8 @@ def estimate_alpha_from_kappa_n(kappa, n=1):
     
     return np.mean((df_kappa[n] - kappa).abs().sort_values().iloc[:2].index.values)
 
+
+
 def estimate_alpha_from_kappa(series, n_bootstrapping=int(1e6)):
     '''
     Estimates tail exponent alpha by estimating the empirical kappa using bootstrapping with "n_bootstrapping" samples.

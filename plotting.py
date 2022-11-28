@@ -10,6 +10,7 @@ figsize=(10, 5)
 
 from FatTailedTools import survival
 from FatTailedTools import kappa_metric
+from FatTailedTools import alpha
 
 
 
@@ -245,7 +246,7 @@ def graphical_alpha_estimation(series, loc=0, frac=0.7, n_subsets=30, plot=True,
         ordered_series = subsample.sort_values(ascending=False).reset_index(drop=True)
         
         # Linear fit on Zipf plot
-        zipf_estimator = ordered_series.expanding(min_periods=MIN_N_SAMPLES).apply(fit_alpha_linear_fast)
+        zipf_estimator = ordered_series.expanding(min_periods=MIN_N_SAMPLES).apply(alpha.fit_alpha_linear_fast)
         
         # Hill estimator
         hill_estimator = 1. / ((np.log(ordered_series).expanding(min_periods=MIN_N_SAMPLES).mean() - np.log(ordered_series)).dropna())

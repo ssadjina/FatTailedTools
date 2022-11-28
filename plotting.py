@@ -210,6 +210,99 @@ def plot_twosided_survival_function(series, tail_zoom=False, distribution_right=
 
 
 
+def graphical_alpha_estimation(series, loc=0, frac=0.7, n_subsets=30, plot=True, max_samples_per_subset=300, sd=2):
+    '''
+    Graphical estimation of the tail exponent.
+    Uses Hill Estimator and linear fit to the log-log survival plot.
+    A location 'loc' can be specified which shifts the entire distribution.
+    If 'plot' visualizes the convergence of the estimator with increasing number of samples.
+    Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
+    'max_samples_per_subset' allows to restrict the number of samples per subset.
+    'sd' gives the standard deviations used in the plots (sd = 2 corresponds to 95% CI).
+    '''
+    
+    # Minimum number of samples required
+    MIN_N_SAMPLES = 3
+    
+    # Drop NAs and take absolute values
+    cleaned_series = (series.dropna() - loc).abs().reset_index(drop=True)
+    len_cleaned_series = len(cleaned_series)
+
+    # Make sure we have enough data (relative to min_samples)
+    assert len_cleaned_series >= MIN_N_SAMPLES, 'Too few samples (n = {}). Need at least {} samples.'.format(len(cleaned_series), MIN_N_SAMPLES)
+    
+    # Set up arrays to save results
+    results_hill = []
+    results_zipf = []
+    
+    # Choose a "safe" fraction of samples to draw for each subset that accounts for an upper bound 'max_samples_per_subset'
+    safe_frac = min(max_samples_per_subset / len_cleaned_series, frac)  
+    
+    # Subsample and calculate estimators
+    for idx, subsample in enumerate([cleaned_series.sample(frac=safe_frac) for i in range(n_subsets)]):
+
+        # Reorder data
+        ordered_series = subsample.sort_values(ascending=False).reset_index(drop=True)
+        
+        # Linear fit on Zipf plot
+        zipf_estimator = ordered_series.expanding(min_periods=MIN_N_SAMPLES).apply(fit_alpha_linear_fast)
+        
+        # Hill estimator
+        hill_estimator = 1. / ((np.log(ordered_series).expanding(min_periods=MIN_N_SAMPLES).mean() - np.log(ordered_series)).dropna())
+        
+        # Collect results
+        results_hill.append(hill_estimator)
+        results_zipf.append(zipf_estimator)
+        
+    # Order results to get back to original ordered samples
+    results_hill = pd.concat(results_hill, axis=1)
+    results_zipf = pd.concat(results_zipf, axis=1)
+    results_hill.columns = range(n_subsets)
+    results_zipf.columns = range(n_subsets)
+    
+    # Assemble DataFrame for Zipf estimator
+    df_longform_zipf = pd.DataFrame(results_zipf.stack()).reset_index()
+    df_longform_zipf.columns = ['Order Statistics', 'Experiment', 'Estimator']
+    df_longform_zipf['Order Statistics'] = (df_longform_zipf['Order Statistics'] / safe_frac).astype('int')
+    df_longform_zipf['Threshold'] = cleaned_series.sort_values(ascending=False).reset_index(drop=True).loc[df_longform_zipf['Order Statistics']].values
+    
+    # Assemble DataFrame for Hill estimator
+    df_longform_hill = pd.DataFrame(results_hill.stack()).reset_index()
+    df_longform_hill.columns = ['Order Statistics', 'Experiment', 'Estimator']
+    df_longform_hill['Order Statistics'] = (df_longform_hill['Order Statistics'] / safe_frac).astype('int')
+    df_longform_hill['Threshold'] = cleaned_series.sort_values(ascending=False).reset_index(drop=True).loc[df_longform_hill['Order Statistics']].values 
+    
+    if plot:
+        
+        fig, ax = plt.subplots(1, 2, constrained_layout=True, figsize=figsize, sharex=False, sharey=False)
+
+        MIN_THRESHOLD = cleaned_series.quantile(0.25)
+
+        # Plot estimators
+        sns.lineplot(data=df_longform_zipf.loc[df_longform_zipf['Threshold'] >= MIN_THRESHOLD], x='Threshold', y='Estimator', errorbar=('sd', sd), ax=ax[0], label='Zipf plot fit');
+        sns.lineplot(data=df_longform_hill.loc[df_longform_hill['Threshold'] >= MIN_THRESHOLD], x='Threshold', y='Estimator', errorbar=('sd', sd), ax=ax[0], label='Hill estimator');
+        ax[0].set_xscale('log');
+        ax[0].set_ylabel('alpha (CI = {:.0%})'.format(1.-2.*(1.-norm.cdf(sd))));
+        ax[0].set_xlim([MIN_THRESHOLD, df_longform_hill['Threshold'].max()]);
+        ax[0].set_ylim([0, 6]);
+        ax[0].grid(visible=True, which='both');
+        ax[0].legend();
+        
+        # Plot survival function log-log plot
+        survival = get_survival_function(cleaned_series.dropna().abs())
+        ax[1].plot(survival['Values'], survival['P'], linestyle='', color='C0', marker='.', markersize=4)
+        ax[1].set_xscale('log');
+        ax[1].set_yscale('log');
+        ax[1].set_xlim([MIN_THRESHOLD, cleaned_series.max()*1.1]);
+        ax[1].grid(visible=True, which='both');
+        ax[1].set_xlabel('Threshold');
+        ax[1].set_ylabel('Survival probability');
+        
+    else:
+        return df_longform_hill, df_longform_zipf
+
+
+
 def plot_empirical_kappa_n(series, n_bootstrapping=10000, n_values=list(range(20, 601, 20))):
     '''
     Plots the empirical kappa_n metric using "n_bootstrapping" bootstrapping samples n in "n_values".

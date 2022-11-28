@@ -211,6 +211,8 @@ def plot_twosided_survival_function(series, tail_zoom=False, distribution_right=
 
 
 
+from scipy.stats import norm
+
 def graphical_alpha_estimation(series, loc=0, frac=0.7, n_subsets=30, plot=True, max_samples_per_subset=300, sd=2):
     '''
     Graphical estimation of the tail exponent.

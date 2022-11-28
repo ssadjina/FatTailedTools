@@ -292,7 +292,7 @@ def graphical_alpha_estimation(series, loc=0, frac=0.7, n_subsets=30, plot=True,
         ax[0].legend();
         
         # Plot survival function log-log plot
-        survival = get_survival_function(cleaned_series.dropna().abs())
+        survival = survival.get_survival_function(cleaned_series.dropna().abs())
         ax[1].plot(survival['Values'], survival['P'], linestyle='', color='C0', marker='.', markersize=4)
         ax[1].set_xscale('log');
         ax[1].set_yscale('log');

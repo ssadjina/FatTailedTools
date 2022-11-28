@@ -83,6 +83,34 @@ def fit_alpha_linear(series, tail_frac=None, plot=True, return_scale=False):
 
 
 
+def fit_alpha_linear_fast(series):
+    '''
+    Estimates the tail parameter by fitting a linear function to the log-log survival function.
+    Optimized for speed to be used with, for example, subsampling and Monte Carlo simulations.
+    '''
+    
+    # Get survival function
+    abs_series = series.dropna().abs().sort_values(ascending=True).values
+    x = np.log10(abs_series)
+    y = np.log10(
+        [(abs_series >= value).mean() for value in abs_series]
+    )
+
+    # Calculate slope
+    n = len(x)
+    xy = x * y
+    sum_x = x.sum()
+    sum_y = y.sum()
+    sum_xy = xy.sum()
+    sum_x2 = (x**2).sum()
+    slope = n * sum_xy - sum_x * sum_y
+    slope /= n * sum_x2 - sum_x**2
+    alpha = -slope
+    
+    return alpha
+
+
+
 from scipy.stats import t
 
 def fit_alpha(series, plot=True, return_additional_params=False, **kwargs):

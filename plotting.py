@@ -128,7 +128,7 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(
     if distribution is not None:
         
         # Get analytical distribution
-        x = np.logspace(-4, np.log10(cleaned_series.max()), 1000)
+        x = np.logspace(-4, np.log10(2*cleaned_series.max()), 1000)
         p = 1 - np.sign(x) * distribution[0].cdf(x, *distribution[1]) - np.sign(-x) * distribution[0].cdf(-x, *distribution[1])
         
         # Plot

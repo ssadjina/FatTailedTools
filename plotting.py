@@ -134,7 +134,7 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(
         # Plot
         with sns.axes_style('whitegrid'):
             sns.lineplot(x=x, y=p,  color='C3', ax=ax);
-            ax.legend(['Fitted distribution ({})'.format(distribution[0].name), 'Samples']);
+            ax.legend(['Samples', 'Fitted distribution ({})'.format(distribution[0].name)]);
         
     # Set axes
     ax.set_xscale('log');

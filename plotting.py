@@ -183,17 +183,8 @@ def plot_twosided_survival_function(series, distribution=None, figsize=(10, 5), 
 
         subset = cleaned_series if n_subsets == 1 else cleaned_series.sample(frac=subset_frac, replace=True)
 
-        # Get survival functions
-        survival_right = survival.get_survival_function(tails.get_right_tail(subset))
-        survival_left  = survival.get_survival_function(tails.get_left_tail( subset))
-        survival_left['Values'] *= -1
-
-        # Transform to get correct probabilities
-        survival_right['P'] *= (subset >= 0).mean()
-        survival_left['P'] = 1.-((1.-(subset >= 0).mean()) * survival_left['P'])
-
-        # Concatenate into one DataFrame
-        survival_func = pd.concat([survival_left, survival_right]).sort_values(by='Values')
+        # Get survival function
+        survival_func = survival.get_twosided_survival_function(subset)
 
         # Plot
         sns.scatterplot(data=survival_func, x='Values', y='P', s=point_size, color='C0', alpha=1./n_subsets, ax=ax, label='Samples' if n_subsets==1 else '_nolegend_');

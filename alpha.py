@@ -47,7 +47,7 @@ def fit_alpha_linear(series, tail_frac=None, plot=True, return_scale=False):
     tail_start = get_tail_start(series, tail_frac=tail_frac)
     
     # Get tail
-    survival_tail = np.log10(survival_func.loc[survival_func['Values'] >= tail_start].iloc[:-1])
+    survival_tail = np.log10(survival_func.loc[survival_func['Values'] >= tail_start])
     
     # Fit the tail
     tail_fit = np.polyfit(survival_tail['Values'], survival_tail['P'], 1)

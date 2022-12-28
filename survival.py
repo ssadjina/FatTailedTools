@@ -7,6 +7,7 @@ import warnings
 
 
 from FatTailedTools import alpha
+from FatTailedTools import tails
 
 
 
@@ -21,18 +22,44 @@ def get_survival_function(series, inclusive=True):
     abs_series = series.dropna().abs()
     
     # Set up DataFrame and sort values from largest to smallest
-    survival = pd.DataFrame(abs_series.values, index=abs_series.index, columns=['Values']).sort_values(by='Values', ascending=True)
+    survival = pd.DataFrame(abs_series.sort_values())
+    survival.columns = ['Values']
     
-    # Determine whether we compare with '>=' or with '>'
-    if inclusive:
-        func = lambda x: (survival['Values'] >= x).mean()
-    else:
-        func = lambda x: (survival['Values'] > x).mean()
+    # Get parameters
+    len_series = len(abs_series)
     
-    # Get survival probabilities
-    survival['P'] = survival['Values'].apply(func)
+    # Get survival probabilites
+    survival['P'] = 1. - (np.array(range(len_series)) + (1.-inclusive))/(len_series)
     
     return survival
+    
+    return survival
+
+
+
+def get_twosided_survival_function(series, inclusive=True):
+    '''
+    Calculates the full two-sided survival function from a Pandas Series 'series'.
+    Returns a Pandas DataFrame with the columns "Values", X, and "P", P(x >= X), keeping the index (and NAs dropped).
+    If 'inclusive', P(x >= X) is used and the largest data point is plotted. Else, P(x > X) is used and the largest data point is not plotted. The latter is consistent with, e.g., seaborn.ecdfplot(complementary=True).
+    '''
+
+    # Take absolute values and drop NAs
+    cleaned_series = series.dropna()
+
+    # Get survival functions
+    survival_right = get_survival_function(tails.get_right_tail(cleaned_series), inclusive=inclusive)
+    survival_left  = get_survival_function(tails.get_left_tail( cleaned_series), inclusive=inclusive)
+    survival_left['Values'] *= -1
+
+    # Transform to get correct probabilities
+    survival_right['P'] *= (cleaned_series >= 0).mean()
+    survival_left['P'] = 1.-((1.-(cleaned_series >= 0).mean()) * survival_left['P'])
+
+    # Concatenate into one DataFrame
+    survival_func = pd.concat([survival_left, survival_right]).sort_values(by='Values')
+
+    return survival_func
 
 
 

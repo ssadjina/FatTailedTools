@@ -2,11 +2,14 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 
 from FatTailedTools import survival
 from FatTailedTools import plotting
+from FatTailedTools import returns
+from FatTailedTools import tails
 
 
 
@@ -155,110 +158,357 @@ def fit_alpha(series, plot=True, return_additional_params=False, **kwargs):
 
 
 
-import seaborn as sns
+def fit_alpha_and_scale_linear_subsampling(
+        data,
+        period_days,
+        tail,
+        plot=True,
+        frac=0.9,
+        min_samples=9,
+        n_subsamples=300,
+        n_fits_per_subsample=30,
+        debug_alpha_threshold=np.inf
+):
+    '''
+    Estimates the tail exponent and the scale of a Student's t distribution for the left or right tail of the log returns of a time series.
+    :param data: Time series data passed as pandas.Series with a DateTimeIndex.
+    :param period_days: The time period used to generate the log returns in days passed as integer.
+    :param tail: Determines the side of the distribution ('left' or 'right').
+    :param plot: Whether to plot the multivariate distribution over scales and tail coefficients.
+    :param frac: The fraction of all data to use for bootstrapping.
+    :param min_samples: Smallest number of samples required for the linear fit.
+    :param n_subsamples: Number of times parameters are estimated using bootstrap.
+    :param n_fits_per_subsample: Number of thresholds to check to determine optimal threshold (and help estimate parameters).
+    :param debug_alpha_threshold: If the tail exponent is estimated larger than this value, a plot is produced to help check for errors.
+    :return:
+    '''
 
-def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac_range=None, plot=True, return_scale=False):
-    '''
-    Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
-    Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
-    If return_scale is True, also returns the scale of the distribution.
-    'tail_frac_range' defines what uniform range to draw from as a guess for where the tail starts
-    in terms of the fraction of data used (from largest to smallest).
-    '''
-    
-    # Set up lists
-    _results = []
-    
-    # When no tail_frac_range is given a simple heuristic is used:
-    if tail_frac_range is None:
-        tail_frac_midle = get_tail_frac_guess(series)
-        tail_frac_range = (tail_frac_midle/1.5, tail_frac_midle*1.5)
-    
-    # Subsample and fit
-    for subsample in [series.sample(frac=frac) for i in range(n_subsets)]:
-        
-        # Randomly choose a tail start from a uniform random distribution
-        tail_frac = np.random.uniform(*tail_frac_range)
-        
-        _results.append(subsample.abs().agg(fit_alpha_linear, tail_frac=tail_frac, plot=False, return_scale=True))
-        
-    # Assemble into DataFrame
-    results = pd.DataFrame(_results, columns=['Tail Exponent', 'Scale'])
-    
-    # Plot
+    # Sanity checks
+    assert isinstance(data, pd.Series), '\'data\' needs to be a Pandas Series with DateTimeIndex.'
+    assert isinstance(data.index, pd.DatetimeIndex), '\'data\' needs to have a DateTimeIndex.'
+    assert isinstance(period_days, int)
+    assert period_days >= 1, '\'period_days\' needs to be larger than 0.'
+    assert len(data) > np.ceil(30 * period_days / frac), 'Not enough samples in \'data\'.'
+    assert tail in ['left', 'right'], '\'tail\' must be either \'left\' or \'right\'.'
+
+    # Set up
+    results = []
+
+    # Get function to use to get left or right tail
+    get_tail = tails.get_left_tail if tail == 'left' else tails.get_right_tail
+
+    # Subsample to address various types of uncertainty when estimating the tail exponent:
+    #    1. Use different time shifts/origins (if period > 1) to adress the uncertainty wrt. choosing the "right" shift/origin.
+    #    2. Use bootstrapping to address the fact that we always have incomplete data.
+    #    3. Repeat the linear fit to the log-log survival function with different thresholds for where the tail starts.
+    for i in range(n_subsamples):
+
+        # --------------------------------------------------------------------------------------------
+        # Handle uncertainty wrt. the "correct" origin / time shift.
+
+        # Randomly select a time shift/origin
+        time_shift = np.random.choice(range(period_days))
+
+        # Calculate the log returns over 'period' and using a shift 'time_shift'
+        series     = returns.get_log_returns(data.shift(time_shift), periods='{}d'.format(period_days))
+
+        # --------------------------------------------------------------------------------------------
+        # Use bootstrapping to include the uncertainty wrt. to the data.
+        subsample = series.sample(frac=frac, replace=True)
+
+        # --------------------------------------------------------------------------------------------
+        # Calculate the survival function
+
+        # Get the desired tail of the distribution
+        subsample = get_tail(subsample).dropna()
+
+        # Get survival function
+        abs_series = subsample.dropna().abs().sort_values(ascending=True)
+        x = np.log10(abs_series)
+        y = np.log10(
+            [(abs_series >= value).mean() for value in abs_series]
+        )
+
+        # --------------------------------------------------------------------------------------------
+        # Handle uncertainty wrt. the "correct" threshold, that is, where the tail starts
+
+        # Choose the range for the thresholds to use
+        threshold_min = abs_series.median()
+        threshold_max = abs_series.iloc[-min_samples]
+        thresholds    = np.linspace(threshold_min, threshold_max, n_fits_per_subsample)
+
+        # Set up lists to store results of the linear fits
+        fitted_tail_exponents = []
+        fitted_MSE            = []
+
+        # Iterate through the treshold range
+        for threshold in thresholds:
+
+            # Select only the samples of the survival function which are >= threshold for the fit
+            x_fit = x[abs_series >= threshold]
+            y_fit = y[abs_series >= threshold]
+
+            # Fit linear regression model using OLS
+            slope, intercept = fast_linear_fit(x_fit, y_fit)
+
+            # Get tail exponent
+            tail_exponent = -slope
+
+            # Get mean squared error (MSE)
+            y_pred = intercept + x_fit * slope
+            MSE    = np.mean((y_pred - y_fit)**2)
+
+            # Store results
+            fitted_tail_exponents.append(tail_exponent)
+            fitted_MSE.append(MSE)
+
+        # Determine the best tail exponent and threshold
+        # This is done via exponential weighting of the results wrt. the MSE
+        fitted_MSE             = np.array(fitted_MSE)
+        weights                = np.exp(-fitted_MSE / fitted_MSE.min())
+        best_fit_tail_exponent = np.average(fitted_tail_exponents, weights=weights)
+        best_fit_threshold     = np.average(thresholds,            weights=weights)
+
+        # Also get lowest achieved MSE for any of the fits
+        MSE_min                = fitted_MSE.min()
+
+        # --------------------------------------------------------------------------------------------
+        # Fit Student's t distribution using the estimated tail exponent and location = 0
+
+        # To be able to do this, the data is mirrored around 0
+        t_series = pd.concat([-abs_series, abs_series])
+
+        # Fit and extract scale
+        t_params = t.fit(t_series, f0=best_fit_tail_exponent, floc=0)
+        t_scale  = t_params[-1]
+
+        # --------------------------------------------------------------------------------------------
+        # Collect results
+        results.append([
+            best_fit_tail_exponent,
+            t_scale,
+            MSE_min,
+            best_fit_threshold,
+            time_shift,
+        ])
+
+        # --------------------------------------------------------------------------------------------
+        # Create a debug plot if the best found tail exponent is beyond the threshold 'debug_alpha_threshold'
+        if best_fit_tail_exponent > debug_alpha_threshold:
+
+            # Set up subplots
+            fig, ax = plt.subplot_mosaic(
+                [
+                    [2, 1],
+                    [0, 1]
+                ],
+                figsize=(8, 3), gridspec_kw={'width_ratios': [1, 2]}, constrained_layout=True
+            );
+
+            # Plot Survival Function
+            x_plot_range = [10**np.min(x[x > -np.inf])*2, 10**np.max(x)*2]
+            y_plot_range = [10**np.min(y)/2, 1]
+            ax[1].scatter(10**x, 10**y, s=1);
+            ax[1].set_xscale('log');
+            ax[1].set_yscale('log');
+            ax[1].set_title('Survival Function');
+            ax[1].set_xlabel('Threshold');
+            ax[1].axvspan(best_fit_threshold, x_plot_range[1], *y_plot_range, alpha=0.1, color='r');
+            ax[1].set_xlim(x_plot_range);
+            ax[1].set_ylim(y_plot_range);
+
+            # Plot Student's t fit
+            x_plot = np.geomspace(*x_plot_range, 500);
+            p = 1 - np.sign(x_plot) * t.cdf(x_plot, *t_params) - np.sign(-x_plot) * t.cdf(-x_plot, *t_params);
+            ax[1].plot(x_plot, p, c='C3');
+            ax[1].legend(['Data', 'Tail', 'Fit (t)']);
+
+            # Plot weighting
+            ax[0].fill_between(thresholds, weights, 0, alpha=0.6);
+            ax[0].set_ylabel('Weighting');
+            ax[0].set_xlabel('Threshold');
+
+            # Plot tail exponent
+            ax[2].fill_between(x=thresholds, y1=fitted_tail_exponents, y2=best_fit_tail_exponent, alpha=0.6);
+            ax[2].set_ylabel('alpha');
+            ax[2].hlines(best_fit_tail_exponent, *ax[2].get_xlim(), color='C3');
+
+            # Set axes
+            for axis in [0, 1, 2]:
+                ax[axis].grid(which='both');
+                ax[axis].vlines(best_fit_threshold, *ax[axis].get_ylim(), color='C3', linestyle='--');
+
+            plt.show();
+
+    # --------------------------------------------------------------------------------------------
+    # Assemble results
+
+    # Construct DataFrame to return
+    df_results = pd.DataFrame(results, columns=['Tail Exponent', 'Scale', 'MSE', 'Threshold', 'Time Shift'])
+
+    # Add tail coefficient (inverse alpha)
+    df_results['Tail Coefficient'] = 1 / df_results['Tail Exponent']
+
+    # --------------------------------------------------------------------------------------------
+    # Calculate the final best estimate for the tail exponent and the scale.
+    # We assume that everything (tail exponent, tail coefficient, scale) is log normal distributed.
+    # Note that the log normal approximates the normal for small standard deviations.
+
+    # The best tail exponent is the inverse of the exponential of the average log tail coefficient
+    estimated_tail_exponent = 1/np.exp(np.log(df_results['Tail Coefficient']).mean())
+
+    #The best scale is the exponential of the average log scale
+    estimated_scale         = np.exp(np.log(df_results['Scale']).mean())
+
+    # --------------------------------------------------------------------------------------------
+    # If 'plot', plot the results for the tail coefficient and the scale
     if plot:
-        
-        fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-        
-        results['Tail Exponent'].hist(bins=10);
-        plt.xlabel('Tail Exponent alpha');
-        plt.title('Fit to log-log tail with random subsamples ({})'.format(series.name));
-        plt.vlines(x=results['Tail Exponent'].mean(), ymin=0, ymax=plt.gca().get_ylim()[1], color='red', label='Mean ({:.2f})'.format(results['Tail Exponent'].mean()));
-        plt.vlines(x=results['Tail Exponent'].median(), ymin=0, ymax=plt.gca().get_ylim()[1], color='red', linestyle='--', label='Median ({:.2f})'.format(results['Tail Exponent'].median()));
-        plt.legend();
-        
-    # Construct result
-    return results if return_scale else results.loc[:, ['Tail Exponent']]
+
+        # Plot histogram and fits and return lognormal fits to tail coefficient and scale
+        dists = plot_alpha_and_scale_fit_hist(df_results);
+
+    return estimated_tail_exponent, estimated_scale, df_results, dists
 
 
 
-#def fit_alpha_linear_subsampling(series, frac=0.7, n_subsets=300, tail_frac=0.1, plot=True, return_loc=False):
-#    '''
-#    Estimates the tail parameter by fitting a linear function to the log-log tail of the survival function.
-#    Uses 'n_subsets' subsamples to average results over subsets with a fraction 'frac' of samples kept.
-#    If return_loc is True, also returns where the tail of the distribution is assumed to start.
-#    'tail_frac' defines where the tail starts in terms of the fraction of data used (from largest to smallest).
-#    '''
-#    
-#    # Set up lists
-#    _results_both  = []
-#    _results_left  = []
-#    _results_right = []
-#    
-#    # Subsample and fit
-#    for subsample in [series.sample(frac=frac) for i in range(n_subsets)]:
-#        
-#        _results_both.append(subsample.abs().agg(fit_alpha_linear, tail_frac=tail_frac, plot=False, return_loc=True))
-#        _results_left.append(subsample.where(subsample  < 0).abs().agg(fit_alpha_linear, tail_frac=tail_frac, plot=False, return_loc=True))
-#        _results_right.append(subsample.where(subsample >= 0).abs().agg(fit_alpha_linear, tail_frac=tail_frac, plot=False, return_loc=True))      
-#        
-#    # Assemble into DataFrame
-#    alphas = pd.DataFrame.from_records(np.hstack([_results_both, _results_left, _results_right]), columns=pd.MultiIndex.from_product([['Both', 'Left', 'Right'], ['Tail Exponent', 'Location']]))    
-#        
-#    # Plot
-#    if plot:
-#        
-#        fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-#        
-#        fig.suptitle('Tail exponents for {} with random subsamples'.format(series.name))
-#        
-#        for idx, name in enumerate(['Both', 'Left', 'Right']):
-#            
-#            sns.histplot(data=alphas[(name, 'Tail Exponent')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[idx]);
-#            ax[idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Tail Exponent')].median(), alphas[(name, 'Tail Exponent')].mean(), ['both', 'left', 'right'][idx]));
-#            ax[idx].set_xlabel('Tail exponent ({})'.format(['both', 'left', 'right'][idx]));
-#            
-#        plt.show();
-#        
-#        # Also plot locations if return_loc
-#        if return_loc:
-#        
-#            fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-#        
-#            fig.suptitle('Locations for {} with random subsamples'.format(series.name))
-#            
-#            for idx, name in enumerate(['Both', 'Left', 'Right']):
-#                
-#                sns.histplot(data=alphas[(name, 'Location')], color=['C7', 'C3', 'C0'][idx], stat='probability', bins=10, ax=ax[idx]);
-#                ax[idx].set_title('Median = {:.1f} | Mean = {:.1f} ({})'.format(alphas[(name, 'Location')].median(), alphas[(name, 'Location')].mean(), ['both', 'left', 'right'][idx]));
-#                ax[idx].set_xlabel('Location ({})'.format(['both', 'left', 'right'][idx]));
-#                
-#            plt.show();
-#        
-#    # Construct result
-#    result = alphas if return_loc else alphas.loc[:, (slice(None), 'Tail Exponent')]
-#    
-#    return result
+from scipy.stats import lognorm
+
+def plot_alpha_and_scale_fit_hist(df, x='Scale', y='Tail Coefficient', dists=None, **kwargs):
+    '''
+    Convenience function to plot a 2D histogram of tail coefficient and scale after a fit with fit_alpha_and_scale_linear_subsampling.
+    :param df: Pandas DataFrame that holds the results from the fitting procedure fit_alpha_and_scale_linear_subsampling().
+    :param x: Label of column in df to be used for the x values. Default is the Student's t scale.
+    :param y: Label of column in df to be used for the y values. Default is the tail coefficient (inverse alpha).
+    :param dists: A dict holding the distributions for x and y and their parameters. Default is None in which case x and y are fitted to lognormal distributions each.
+    :param kwargs: Arguments that can be passed to seaborn.JointGrid().
+    :return: A dict holding the distributions for x and y and their parameters. If none are given via the 'dists' argument, x and y are fitted to lognormal distributions.
+    '''
+
+    # Initialize the figure
+    g = sns.JointGrid(x=df[x], y=df[y], marginal_ticks=True, **kwargs)
+
+    # Create an inset legend for the histogram colorbar
+    cax = g.figure.add_axes([.75, .60, .02, .2])
+
+    # Add the joint and marginal histogram plots
+    g.plot_joint(
+        sns.histplot, bins='fd', stat='density', cbar=True, cbar_ax=cax
+    )
+    g.plot_marginals(sns.histplot, bins='fd', stat='density', element='step');
+
+    # Fit results to log normal distribution if none are given
+    if dists is None:
+        dists = {}
+        for column in [x, y]:
+            params = lognorm.fit(df[column])
+            dist   = lognorm(*params)
+            dists.update({column: (dist, params)})
+
+    x_plot = df[x].sort_values()
+    y_plot = df[y].sort_values()
+    _ = g.ax_marg_x.plot(x_plot, dists[x][0].pdf(x_plot), c='C3');
+    _ = g.ax_marg_y.plot(dists[y][0].pdf(y_plot), y_plot, c='C3');
+
+    # Add best guesses
+    x_guess = np.exp(np.log(df[x]).mean())
+    y_guess = np.exp(np.log(df[y]).mean())
+    g.refline(x=x_guess, y=y_guess, c='C3');
+
+    return dists
+
+
+
+from scipy.stats import multivariate_normal
+
+def transform_lognormal_to_normal(x, s, loc, scale):
+    '''
+    Transforms lognormally distributed data to normally distributed data using the parameters obtained from a scipy.stats.lognormal fit
+    :param x: Array holding the lognormal distributed data.
+    :param s: Shape parameter of the lognormal.
+    :param loc: Location parameter of the lognormal.
+    :param scale: Scale parameter of the lognormal.
+    :return: The transformed array
+    '''
+
+    return np.log(s * (x - loc)) - np.log(scale)
+
+
+
+def transform_normal_to_lognormal(log_x, s, loc, scale):
+    '''
+    Transforms normally distributed data to lognormally distributed data using the parameters obtained from a scipy.stats.lognormal fit
+    :param x: Array holding the normal distributed data.
+    :param s: Shape parameter of the lognormal.
+    :param loc: Location parameter of the lognormal.
+    :param scale: Scale parameter of the lognormal.
+    :return: The transformed array.
+    '''
+
+    return np.exp(log_x + np.log(scale)) / s + loc
+
+
+
+def fit_multivariate_lognormal(x, y):
+    '''
+    Fits a multivariate normal distribution to the log transform of the two vectors x and y.
+    :param x: Array holding the x values.
+    :param y: Array holding the y values
+    :return: (dist, lognorm_params_x, lognorm_params_y); where 'dist' is a scipy.stats.multivariate_normal object fitted to the (log of the) data, and 'lognorm_params_{x/y}' are the parameters obtained from fitting the data to scipy.stats.lognormal.
+    '''
+
+    # Get lognormal fit parameters to be able to scale the data properly
+    lognorm_params_x = lognorm.fit(x)
+    lognorm_params_y = lognorm.fit(y)
+
+    # Get log transforms with the correct scaling
+    log_x = transform_lognormal_to_normal(x, *lognorm_params_x)
+    log_y = transform_lognormal_to_normal(y, *lognorm_params_y)
+
+    # Extract the mean and standard deviation of the log transformed data
+    mean1 =  log_x.mean()
+    std1  =  log_x.std()
+    mean2 =  log_y.mean()
+    std2  =  log_y.std()
+
+    # Define the covariance matrix
+    rho = np.corrcoef(log_x, log_y)[0, 1]
+    cov = [[std1**2, rho*std1*std2], [rho*std1*std2, std2**2]]
+
+    # Create a multivariate_normal object with the means and covariance of the log transformed data
+    dist = multivariate_normal(mean=[mean1, mean2], cov=cov)
+
+    return dist, lognorm_params_x, lognorm_params_y
+
+
+
+def sample_multivariate_lognormal(dist, lognorm_params_x, lognorm_params_y, size):
+    '''
+    Fits a multivariate normal distribution to the log transform of the two vectors x and y.
+    Returns 'size' number of samples drawn from the fitted distribution.
+    '''
+
+    # Generate samples from the fitted distribution
+    log_data = dist.rvs(size=size)
+
+    # Transform back
+    data = np.vstack([
+        transform_normal_to_lognormal(log_data[:, 0], *lognorm_params_x),
+        transform_normal_to_lognormal(log_data[:, 1], *lognorm_params_y)
+    ]).T
+
+    return data
+
+
+
+def fit_and_sample_multivariate_lognormal(x, y, size):
+
+    # Fit data
+    dist, lognorm_params_x, lognorm_params_y = fit_multivariate_lognormal(x, y)
+
+    # Sample
+    data = sample_multivariate_lognormal(dist, lognorm_params_x, lognorm_params_y, size)
+
+    return data
 
 
 

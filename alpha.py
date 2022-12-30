@@ -83,6 +83,31 @@ def fit_alpha_linear(series, tail_frac=None, plot=True, return_scale=False):
 
 
 
+def fast_linear_fit(x, y):
+    '''
+    Optimized for speed to be used with, for example, subsampling and Monte Carlo simulations.
+    Can be used to estimate the tail parameter by fitting a linear function to the log-log survival function.
+    In that case, alpha = -slope
+    '''
+
+    # Calculate slope
+    n = len(x)
+    xy = x * y
+    sum_x = x.sum()
+    sum_y = y.sum()
+    sum_xy = xy.sum()
+    sum_x2 = (x**2).sum()
+    slope = n * sum_xy - sum_x * sum_y
+    slope /= n * sum_x2 - sum_x**2
+
+    # Calculate intercept
+    intercept = sum_y - slope * sum_x
+    intercept /= n
+
+    return slope, intercept
+
+
+
 def fit_alpha_linear_fast(series):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log survival function.
@@ -96,15 +121,10 @@ def fit_alpha_linear_fast(series):
         [(abs_series >= value).mean() for value in abs_series]
     )
 
-    # Calculate slope
-    n = len(x)
-    xy = x * y
-    sum_x = x.sum()
-    sum_y = y.sum()
-    sum_xy = xy.sum()
-    sum_x2 = (x**2).sum()
-    slope = n * sum_xy - sum_x * sum_y
-    slope /= n * sum_x2 - sum_x**2
+    # Perform fast linear fit
+    slope, intercept = fast_linear_fit(x, y)
+
+    # Get alpha
     alpha = -slope
     
     return alpha

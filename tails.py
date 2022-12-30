@@ -57,7 +57,7 @@ def shoulders_and_tails_norm(mu, sigma):
 
 
 
-import distributions
+from FatTailedTools import distributions
 
 def get_shoulders_and_tails_from_JointDistribution(joint_dist):
     '''

@@ -54,3 +54,19 @@ def shoulders_and_tails_norm(mu, sigma):
     tail     = np.sqrt(1/2 * (5 + np.sqrt(17))) * sigma
     
     return -tail + mu, -shoulder + mu, shoulder + mu, tail + mu
+
+
+
+import distributions
+
+def get_shoulders_and_tails_from_JointDistribution(joint_dist):
+    '''
+    Returns the location of the "shoulders" and the "tails" of the two Student t distributions in a 'JointDistribution'.
+    '''
+    
+    params_left, params_right = distributions.get_params_from_JointDistribution(joint_dist)
+    
+    tail_start_left, shoulder_point_left, _, _   = shoulders_and_tails_t(*params_left )
+    _, _, shoulder_point_right, tail_start_right = shoulders_and_tails_t(*params_right)
+    
+    return tail_start_left, shoulder_point_left, shoulder_point_right, tail_start_right

@@ -414,6 +414,8 @@ def plot_alpha_and_scale_fit_hist(df, x='Scale', y='Tail Coefficient', dists=Non
     y_guess = np.exp(np.log(df[y]).mean())
     g.refline(x=x_guess, y=y_guess, c='C3');
 
+    plt.show();
+
     return dists
 
 

@@ -267,15 +267,15 @@ def fit_alpha_and_scale_linear_subsampling(
 
         # Determine the best tail exponent and threshold
         # This is done via exponential weighting of the results wrt. the MSE
-        fitted_MSE             = np.array(fitted_MSE)
-        weights                = np.exp(-fitted_MSE / fitted_MSE.min())
-        best_fit_tail_exponent = np.average(fitted_tail_exponents, weights=weights)
-        best_fit_threshold     = np.average(thresholds,            weights=weights)
+        fitted_MSE              = np.array(fitted_MSE)
+        weights                 = np.exp(-fitted_MSE / fitted_MSE.min())
+        best_fit_tail_exponent  = np.average(fitted_tail_exponents, weights=weights)
+        best_fit_threshold      = np.average(thresholds,            weights=weights)
 
         # Also get lowest achieved MSE for any of the fits
-        assert len(MSE_min)   >= 1
-        MSE_min                = fitted_MSE.min()
-        assert MSE_min         > 0
+        assert len(fitted_MSE) >= 1
+        MSE_min                 = fitted_MSE.min()
+        assert MSE_min          > 0
 
         # --------------------------------------------------------------------------------------------
         # Fit Student's t distribution using the estimated tail exponent and location = 0

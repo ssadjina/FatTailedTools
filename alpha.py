@@ -238,6 +238,7 @@ def fit_alpha_and_scale_linear_subsampling(
         # Choose the range for the thresholds to use
         threshold_min = abs_series.median()
         threshold_max = abs_series.iloc[-min_samples]
+        assert threshold_min < threshold_max
         thresholds    = np.linspace(threshold_min, threshold_max, n_fits_per_subsample)
 
         # Set up lists to store results of the linear fits

@@ -171,16 +171,19 @@ def fit_alpha_and_scale_linear_subsampling(
 ):
     '''
     Estimates the tail exponent and the scale of a Student's t distribution for the left or right tail of the log returns of a time series.
-    :param data: Time series data passed as pandas.Series with a DateTimeIndex.
-    :param period_days: The time period used to generate the log returns in days passed as integer.
-    :param tail: Determines the side of the distribution ('left' or 'right').
-    :param plot: Whether to plot the multivariate distribution over scales and tail coefficients.
-    :param frac: The fraction of all data to use for bootstrapping.
-    :param min_samples: Smallest number of samples required for the linear fit.
+    :param data:         Time series data passed as pandas.Series with a DateTimeIndex.
+    :param period_days:  The time period used to generate the log returns in days passed as integer.
+    :param tail:         Determines the side of the distribution ('left' or 'right').
+    :param plot:         Whether to plot the multivariate distribution over scales and tail coefficients.
+    :param frac:         The fraction of all data to use for bootstrapping.
+    :param min_samples:  Smallest number of samples required for the linear fit.
     :param n_subsamples: Number of times parameters are estimated using bootstrap.
-    :param n_fits_per_subsample: Number of thresholds to check to determine optimal threshold (and help estimate parameters).
+    :param n_fits_per_subsample:  Number of thresholds to check to determine optimal threshold (and help estimate parameters).
     :param debug_alpha_threshold: If the tail exponent is estimated larger than this value, a plot is produced to help check for errors.
-    :return:
+    :return: The estimated tail exponent ('estimated_tail_exponent'), the estimated scale ('estimated_scale') of a Student's t 
+    distribution with the estimated tail exponent, a pandas DataFrame holding all results ('df_results'), and a dictionary ('dists') 
+    of the form {parameter: (dist, params)} that holds two fitted univariate lognormal distributions ('dist') and their parameters 
+    ('params') for the scale ('Scale') and for the tail coefficient ('Tail Coefficient'), respectively.
     '''
 
     # Sanity checks
@@ -270,7 +273,9 @@ def fit_alpha_and_scale_linear_subsampling(
         best_fit_threshold     = np.average(thresholds,            weights=weights)
 
         # Also get lowest achieved MSE for any of the fits
+        assert len(MSE_min)   >= 1
         MSE_min                = fitted_MSE.min()
+        assert MSE_min         > 0
 
         # --------------------------------------------------------------------------------------------
         # Fit Student's t distribution using the estimated tail exponent and location = 0
@@ -279,7 +284,15 @@ def fit_alpha_and_scale_linear_subsampling(
         t_series = pd.concat([-abs_series, abs_series])
 
         # Fit and extract scale
-        t_params = t.fit(t_series, f0=best_fit_tail_exponent, floc=0)
+        try:
+            t_params = t.fit(t_series, f0=best_fit_tail_exponent, floc=0)
+        except FitError:
+            # If fitting routine fails, return np.nan as scale
+            print('WARNING: Fit of Student\'s t to data failed for alpha={:.2f} and threshold={:.4f}.'.format(
+                best_fit_tail_exponent,
+                best_fit_threshold
+            ))
+            t_params = [np.nan] * 3
         t_scale  = t_params[-1]
 
         # --------------------------------------------------------------------------------------------
@@ -366,6 +379,15 @@ def fit_alpha_and_scale_linear_subsampling(
 
         # Plot histogram and fits and return lognormal fits to tail coefficient and scale
         dists = plot_alpha_and_scale_fit_hist(df_results);
+        
+    else:
+        
+        # Produce lognormal fits to tail coefficient and scale
+        dists = {}
+        for column in ['Scale', 'Tail Coefficient']:
+            params = lognorm.fit(df_results[column])
+            dist   = lognorm(*params)
+            dists.update({column: (dist, params)})
 
     return estimated_tail_exponent, estimated_scale, df_results, dists
 

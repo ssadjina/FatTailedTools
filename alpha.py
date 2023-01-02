@@ -389,6 +389,10 @@ def fit_alpha_and_scale_linear_subsampling(
         # Produce lognormal fits to tail coefficient and scale
         dists = {}
         for column in ['Scale', 'Tail Coefficient']:
+            assert len(df_results[column]) >= 30, 'Need at least 30 samples ({} found) to fit \'{}\' to lognormal.'.format(
+                len(df_results[column]),
+                column
+            )
             params = lognorm.fit(df_results[column])
             dist   = lognorm(*params)
             dists.update({column: (dist, params)})
@@ -426,6 +430,10 @@ def plot_alpha_and_scale_fit_hist(df, x='Scale', y='Tail Coefficient', dists=Non
     if dists is None:
         dists = {}
         for column in [x, y]:
+            assert len(df[column]) >= 30, 'Need at least 30 samples ({} found) to fit \'{}\' to lognormal.'.format(
+                len(df[column]),
+                column
+            )
             params = lognorm.fit(df[column])
             dist   = lognorm(*params)
             dists.update({column: (dist, params)})

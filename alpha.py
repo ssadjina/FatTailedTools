@@ -180,9 +180,9 @@ def fit_alpha_and_scale_linear_subsampling(
     :param n_subsamples: Number of times parameters are estimated using bootstrap.
     :param n_fits_per_subsample:  Number of thresholds to check to determine optimal threshold (and help estimate parameters).
     :param debug_alpha_threshold: If the tail exponent is estimated larger than this value, a plot is produced to help check for errors.
-    :return: The estimated tail exponent ('estimated_tail_exponent'), the estimated scale ('estimated_scale') of a Student's t 
-    distribution with the estimated tail exponent, a pandas DataFrame holding all results ('df_results'), and a dictionary ('dists') 
-    of the form {parameter: (dist, params)} that holds two fitted univariate lognormal distributions ('dist') and their parameters 
+    :return: The estimated tail exponent ('estimated_tail_exponent'), the estimated scale ('estimated_scale') of a Student's t
+    distribution with the estimated tail exponent, a pandas DataFrame holding all results ('df_results'), and a dictionary ('dists')
+    of the form {parameter: (dist, params)} that holds two fitted univariate lognormal distributions ('dist') and their parameters
     ('params') for the scale ('Scale') and for the tail coefficient ('Tail Coefficient'), respectively.
     '''
 
@@ -191,7 +191,9 @@ def fit_alpha_and_scale_linear_subsampling(
     assert isinstance(data.index, pd.DatetimeIndex), '\'data\' needs to have a DateTimeIndex.'
     assert isinstance(period_days, int)
     assert period_days >= 1, '\'period_days\' needs to be larger than 0.'
-    assert len(data) > np.ceil(30 * period_days / frac), 'Not enough samples in \'data\'.'
+    assert min_samples >= 3, '\'min_samples\' need to be at least 3.'
+    min_samples_total = int(period_days * 1/frac * 2 * 2 * (min_samples + 1))
+    assert len(data.dropna()) >= min_samples_total, 'Not enough samples in \'data\'. {} required, {} found.'.format(min_samples_total, len(data.dropna()))
     assert tail in ['left', 'right'], '\'tail\' must be either \'left\' or \'right\'.'
 
     # Set up
@@ -235,14 +237,22 @@ def fit_alpha_and_scale_linear_subsampling(
         # --------------------------------------------------------------------------------------------
         # Handle uncertainty wrt. the "correct" threshold, that is, where the tail starts
 
-        # Choose the range for the thresholds to use
-        assert min_samples < len(abs_series)
-        threshold_max = abs_series.iloc[-min_samples]
+        # Choose highest threshold such that at least 'min_samples' are left beyond (for the linear fit)
+        threshold_max  = abs_series.iloc[-min_samples]
         assert threshold_max > 0
-        assert (abs_series >= threshold_max).sum() >= min_samples
-        threshold_min = abs_series.median()
-        assert threshold_min < threshold_max
-        thresholds    = np.linspace(threshold_min, threshold_max, n_fits_per_subsample)
+
+        # Choose lowest threshold as median of all samples below
+        threshold_min  = abs_series.iloc[:-min_samples].median()
+        assert threshold_min < threshold_max, (abs_series, threshold_min, threshold_max)
+
+        # Get all samples that lie in between:
+        thresholds     = abs_series.loc[abs_series.between(threshold_min, threshold_max, inclusive='both')]
+
+        # If there are more than 'n_fits_per_subsample', use a linear spacing instead
+        if len(thresholds) > n_fits_per_subsample:
+            thresholds = np.linspace(threshold_min, threshold_max, n_fits_per_subsample)
+        assert len(thresholds) >= 3, 'Not enough data to select optimal threshold. ' \
+                                     'Get more data, or try decreasing \'min_samples\', or increasing \'frac\'.'
 
         # Set up lists to store results of the linear fits
         fitted_tail_exponents = []
@@ -323,22 +333,26 @@ def fit_alpha_and_scale_linear_subsampling(
             );
 
             # Plot Survival Function
-            x_plot_range = [10**np.min(x[x > -np.inf])*2, 10**np.max(x)*2]
+            x_plot_range = [threshold_min/10, 10**np.max(x)*2]
             y_plot_range = [10**np.min(y)/2, 1]
             ax[1].scatter(10**x, 10**y, s=1);
             ax[1].set_xscale('log');
             ax[1].set_yscale('log');
             ax[1].set_title('Survival Function');
             ax[1].set_xlabel('Threshold');
-            ax[1].axvspan(best_fit_threshold, x_plot_range[1], *y_plot_range, alpha=0.1, color='r');
-            ax[1].set_xlim(x_plot_range);
-            ax[1].set_ylim(y_plot_range);
 
             # Plot Student's t fit
             x_plot = np.geomspace(*x_plot_range, 500);
             p = 1 - np.sign(x_plot) * t.cdf(x_plot, *t_params) - np.sign(-x_plot) * t.cdf(-x_plot, *t_params);
             ax[1].plot(x_plot, p, c='C3');
-            ax[1].legend(['Data', 'Tail', 'Fit (t)']);
+
+            # Plot linear fit using best threshold
+            slope, intercept = fast_linear_fit(
+                x[abs_series >= best_fit_threshold],
+                y[abs_series >= best_fit_threshold]
+            )
+            ax[1].plot(x_plot, 10**(intercept + np.log10(x_plot) * slope), c='C3', linestyle=':');
+            ax[1].legend(['Data', 'Tail', 'Fit (t)', 'Fit (linear)']);
 
             # Plot weighting
             ax[0].fill_between(thresholds, weights, 0, alpha=0.6);
@@ -354,6 +368,9 @@ def fit_alpha_and_scale_linear_subsampling(
             for axis in [0, 1, 2]:
                 ax[axis].grid(which='both');
                 ax[axis].vlines(best_fit_threshold, *ax[axis].get_ylim(), color='C3', linestyle='--');
+            ax[1].axvspan(best_fit_threshold, x_plot_range[1], *y_plot_range, alpha=0.1, color='r');
+            ax[1].set_xlim(x_plot_range);
+            ax[1].set_ylim(y_plot_range);
 
             plt.show();
 
@@ -383,9 +400,9 @@ def fit_alpha_and_scale_linear_subsampling(
 
         # Plot histogram and fits and return lognormal fits to tail coefficient and scale
         dists = plot_alpha_and_scale_fit_hist(df_results);
-        
+
     else:
-        
+
         # Produce lognormal fits to tail coefficient and scale
         dists = {}
         for column in ['Scale', 'Tail Coefficient']:

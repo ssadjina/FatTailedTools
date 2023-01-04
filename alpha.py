@@ -215,7 +215,7 @@ def fit_alpha_and_scale_linear_subsampling(
         time_shift = np.random.choice(range(period_days))
 
         # Calculate the log returns over 'period' and using a shift 'time_shift'
-        series     = returns.get_log_returns(data.shift(time_shift), periods='{}d'.format(period_days))
+        series     = returns.get_log_returns(data, periods='{}d'.format(period_days), offset=time_shift)
 
         # --------------------------------------------------------------------------------------------
         # Use bootstrapping to include the uncertainty wrt. to the data.

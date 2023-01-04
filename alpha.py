@@ -406,32 +406,44 @@ def fit_alpha_and_scale_linear_subsampling(
 
     else:
 
-        # Produce lognormal fits to tail coefficient and scale
+        # If not given, fit results to
+        # a. two univariate log normal distributions
+        # b. a multivariate log normal distribution
         dists = {}
-        for column in ['Scale', 'Tail Coefficient']:
-            assert len(df_results[column]) >= 30, 'Need at least 30 samples ({} found) to fit \'{}\' to lognormal.'.format(
-                len(df_results[column]),
-                column
-            )
-            params = lognorm.fit(df_results[column])
-            dist   = lognorm(*params)
-            dists.update({column: (dist, params)})
+
+        # Fit result to multivariate lognormal distribution
+        multivariate_dist, lognorm_params_x, lognorm_params_y = fit_multivariate_lognormal(
+            df_results['Scale'],
+            df_results['Tail Coefficient']
+        )
+        dists.update({('Scale', 'Tail Coefficient'): multivariate_dist})
+
+        # Fit univariate distributions
+        dists.update({'Scale':            (lognorm(*lognorm_params_x), lognorm_params_x)})
+        dists.update({'Tail Coefficient': (lognorm(*lognorm_params_y), lognorm_params_y)})
 
     return estimated_tail_exponent, estimated_scale, df_results, dists
 
 
 
 from scipy.stats import lognorm
+from matplotlib.colors import LinearSegmentedColormap, to_rgb
 
-def plot_alpha_and_scale_fit_hist(df, x='Scale', y='Tail Coefficient', dists=None, **kwargs):
+def plot_alpha_and_scale_fit_hist(
+        df,
+        x     = 'Scale',
+        y     = 'Tail Coefficient',
+        dists = None,
+        **kwargs
+):
     '''
     Convenience function to plot a 2D histogram of tail coefficient and scale after a fit with fit_alpha_and_scale_linear_subsampling.
     :param df: Pandas DataFrame that holds the results from the fitting procedure fit_alpha_and_scale_linear_subsampling().
     :param x: Label of column in df to be used for the x values. Default is the Student's t scale.
     :param y: Label of column in df to be used for the y values. Default is the tail coefficient (inverse alpha).
-    :param dists: A dict holding the distributions for x and y and their parameters. Default is None in which case x and y are fitted to lognormal distributions each.
+    :param dists: A dict holding the univariate distributions for x and y and their parameters. Default is None in which case x and y are fitted to univariate lognormal distributions each.
     :param kwargs: Arguments that can be passed to seaborn.JointGrid().
-    :return: A dict holding the distributions for x and y and their parameters. If none are given via the 'dists' argument, x and y are fitted to lognormal distributions.
+    :return: A dict holding the univariate distributions for x and y and their parameters, as well as a multivariate distribution. If none are given via the 'dists' argument, x and y are fitted accordingly.
     '''
 
     # Initialize the figure
@@ -446,22 +458,40 @@ def plot_alpha_and_scale_fit_hist(df, x='Scale', y='Tail Coefficient', dists=Non
     )
     g.plot_marginals(sns.histplot, bins='fd', stat='density', element='step');
 
-    # Fit results to log normal distribution if none are given
+    # If not given, fit results to
+    # a. two univariate log normal distributions
+    # b. a multivariate log normal distribution
     if dists is None:
-        dists = {}
-        for column in [x, y]:
-            assert len(df[column]) >= 30, 'Need at least 30 samples ({} found) to fit \'{}\' to lognormal.'.format(
-                len(df[column]),
-                column
-            )
-            params = lognorm.fit(df[column])
-            dist   = lognorm(*params)
-            dists.update({column: (dist, params)})
 
-    x_plot = df[x].sort_values()
-    y_plot = df[y].sort_values()
+        dists = {}
+
+        # Fit result to multivariate lognormal distribution
+        multivariate_dist, lognorm_params_x, lognorm_params_y = fit_multivariate_lognormal(df[x], df[y])
+        dists.update({(x, y): multivariate_dist})
+
+        # Fit univariate distributions
+        dists.update({x: (lognorm(*lognorm_params_x), lognorm_params_x)})
+        dists.update({y: (lognorm(*lognorm_params_y), lognorm_params_y)})
+
+    # Add plots of the univariate distributions to the marginals
+    x_plot = np.linspace(df[x].min(), df[x].max(), 100)
+    y_plot = np.linspace(df[y].min(), df[y].max(), 100)
     _ = g.ax_marg_x.plot(x_plot, dists[x][0].pdf(x_plot), c='C3');
     _ = g.ax_marg_y.plot(dists[y][0].pdf(y_plot), y_plot, c='C3');
+
+    # Add contour plot of the multivariate distribution to the
+    # Set up the meshgrid
+    X, Y = np.meshgrid(x_plot, y_plot)
+
+    # Calculate the PDF at each point on the grid
+    pos = np.empty(X.shape + (2,))
+    pos[:, :, 0] = transform_lognormal_to_normal(X, *lognorm_params_x)
+    pos[:, :, 1] = transform_lognormal_to_normal(Y, *lognorm_params_y)
+    Z = dists[(x, y)].pdf(pos)
+
+    # Plot the contours
+    g.ax_joint.contour(X, Y, Z, cmap=LinearSegmentedColormap.from_list(
+        'cmap_transparent_to_C3', [(*to_rgb('C3'), 0), (*to_rgb('C3'), 1)]))
 
     # Add best guesses
     x_guess = np.exp(np.log(df[x]).mean())

@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import warnings
 
 
 
@@ -162,12 +163,12 @@ def fit_alpha_and_scale_linear_subsampling(
         data,
         period_days,
         tail,
-        plot=True,
-        frac=0.9,
-        min_samples=9,
-        n_subsamples=300,
-        n_fits_per_subsample=30,
-        debug_alpha_threshold=np.inf
+        plot                 = True,
+        frac                 = 0.9,
+        min_samples          = 9,
+        n_subsamples         = 300,
+        n_fits_per_subsample = 30,
+        n_debug_plots        = np.nan
 ):
     '''
     Estimates the tail exponent and the scale of a Student's t distribution for the left or right tail of the log returns of a time series.
@@ -179,7 +180,7 @@ def fit_alpha_and_scale_linear_subsampling(
     :param min_samples:  Smallest number of samples required for the linear fit.
     :param n_subsamples: Number of times parameters are estimated using bootstrap.
     :param n_fits_per_subsample:  Number of thresholds to check to determine optimal threshold (and help estimate parameters).
-    :param debug_alpha_threshold: If the tail exponent is estimated larger than this value, a plot is produced to help check for errors.
+    :param n_debug_plots: Produces a number of 'n_debug_plots' plots to help check for errors in the fitting routine.
     :return: The estimated tail exponent ('estimated_tail_exponent'), the estimated scale ('estimated_scale') of a Student's t
     distribution with the estimated tail exponent, a pandas DataFrame holding all results ('df_results'), and a dictionary ('dists')
     of the form {parameter: (dist, params)} that holds two fitted univariate lognormal distributions ('dist') and their parameters
@@ -243,7 +244,6 @@ def fit_alpha_and_scale_linear_subsampling(
 
         # Choose lowest threshold as median of all samples below
         threshold_min  = abs_series.iloc[:-min_samples].median()
-        assert threshold_min < threshold_max, (abs_series, threshold_min, threshold_max)
 
         # Get all samples that lie in between:
         thresholds     = abs_series.loc[abs_series.between(threshold_min, threshold_max, inclusive='both')]
@@ -251,8 +251,11 @@ def fit_alpha_and_scale_linear_subsampling(
         # If there are more than 'n_fits_per_subsample', use a linear spacing instead
         if len(thresholds) > n_fits_per_subsample:
             thresholds = np.linspace(threshold_min, threshold_max, n_fits_per_subsample)
-        assert len(thresholds) >= 3, 'Not enough data to select optimal threshold. ' \
-                                     'Get more data, or try decreasing \'min_samples\', or increasing \'frac\'.'
+
+        # I there is not even 2 samples to iterate over, we skip
+        if len(thresholds) < 3:
+            warnings.warn('Not enough data to select optimal threshold. Continuing. Get more data, or try decreasing \'min_samples\', or increasing \'frac\'.')
+            continue
 
         # Set up lists to store results of the linear fits
         fitted_tail_exponents = []
@@ -278,13 +281,13 @@ def fit_alpha_and_scale_linear_subsampling(
             # Store results
             fitted_tail_exponents.append(tail_exponent)
             fitted_MSE.append(MSE)
-            
+
         # Prepare array of MSE results and get lowest achieved MSE for any of the fits
         fitted_MSE              = np.array(fitted_MSE)
         assert len(fitted_MSE) >= 1
         MSE_min                 = fitted_MSE.min()
         assert MSE_min          > 0
-        
+
         # Determine the best tail exponent and threshold
         # This is done via exponential weighting of the results wrt. the MSE
         weights                 = np.exp(-fitted_MSE / MSE_min)
@@ -320,8 +323,8 @@ def fit_alpha_and_scale_linear_subsampling(
         ])
 
         # --------------------------------------------------------------------------------------------
-        # Create a debug plot if the best found tail exponent is beyond the threshold 'debug_alpha_threshold'
-        if best_fit_tail_exponent > debug_alpha_threshold:
+        # Create a debug plot (with a maximum number of 'n_debug_plots' plots)
+        if np.mod(i, n_subsamples//n_debug_plots) == 0:
 
             # Set up subplots
             fig, ax = plt.subplot_mosaic(

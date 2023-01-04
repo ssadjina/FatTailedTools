@@ -230,6 +230,9 @@ def fit_alpha_and_scale_linear_subsampling(
 
         # Get survival function
         abs_series = subsample.dropna().abs().sort_values(ascending=True)
+        if len(abs_series) < 3 + min_samples:
+            warnings.warn('Not enough data to select optimal threshold. Continuing. Get more data, or try decreasing \'min_samples\', or increasing \'frac\'.')
+            continue
         x = np.log10(abs_series)
         y = np.log10(
             [(abs_series >= value).mean() for value in abs_series]
@@ -251,11 +254,7 @@ def fit_alpha_and_scale_linear_subsampling(
         # If there are more than 'n_fits_per_subsample', use a linear spacing instead
         if len(thresholds) > n_fits_per_subsample:
             thresholds = np.linspace(threshold_min, threshold_max, n_fits_per_subsample)
-
-        # I there is not even 2 samples to iterate over, we skip
-        if len(thresholds) < 3:
-            warnings.warn('Not enough data to select optimal threshold. Continuing. Get more data, or try decreasing \'min_samples\', or increasing \'frac\'.')
-            continue
+        assert len(thresholds) >= 3
 
         # Set up lists to store results of the linear fits
         fitted_tail_exponents = []

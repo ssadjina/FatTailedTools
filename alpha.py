@@ -432,7 +432,7 @@ def plot_alpha_and_scale_fit_hist(df, x='Scale', y='Tail Coefficient', dists=Non
     '''
 
     # Initialize the figure
-    g = sns.JointGrid(x=df[x], y=df[y], marginal_ticks=True, **kwargs)
+    g = sns.JointGrid(x=df[x], y=df[y], marginal_ticks=False, **kwargs)
 
     # Create an inset legend for the histogram colorbar
     cax = g.figure.add_axes([.75, .60, .02, .2])

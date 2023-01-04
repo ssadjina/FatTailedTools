@@ -4,40 +4,48 @@ import numpy as np
 
 
 
-def get_returns(series, periods='1d'):
+def get_returns(series, periods='1d', offset=0):
     '''
-    Calculates the returns from a given Pandas Series using period "periods"
+    Calculates the returns from a given Pandas Series using period "periods" with an offset of 'offset' periods.
     '''
-    
+
+    # Drop NAs
+    cleaned_series = series.dropna()
+
     # Resample series over periods
-    series_resampled = series.resample(periods).last()
-    
+    series_resampled = cleaned_series.iloc[offset:].resample(periods).first()
+
     # Calculate returns
     returns = series_resampled/series_resampled.shift(1) - 1
-    
+
     # Make sure the product of all returns is equal the total return over the period
-    rel_error = returns.product() * series_resampled.dropna().iloc[0] / series_resampled.dropna().iloc[-1] - 1
-    assert rel_error <= 1e-8, 'Warning! Product of returns was not equal to return over entire period (relative error: {})'.format(rel_error)
-    
+    series_reconstructed = cleaned_series.iloc[offset] * (1 + returns).cumprod()
+    rel_error = (series_reconstructed / series - 1).abs().sum()
+    assert rel_error <= 1e-8, 'Warning! Sum of log returns was not equal to log return over entire period (relative error: {})'.format(rel_error)
+
     return returns
 
 
 
-def get_log_returns(series, periods='1d'):
+def get_log_returns(series, periods='1d', offset=0):
     '''
-    Returns the logarithmic return from a given Pandas Series using period "periods"
+    Returns the logarithmic return from a given Pandas Series using period "periods" with an offset of 'offset' periods.
     '''
-    
+
+    # Drop NAs
+    cleaned_series = series.dropna()
+
     # Resample series over periods
-    series_resampled = series.resample(periods).last()
-    
+    series_resampled = cleaned_series.iloc[offset:].resample(periods).first()
+
     # Calculate log returns
     log_returns = np.log(series_resampled/series_resampled.shift(1))
-    
+
     # Make sure the sum of all log returns is equal the total log return over the period
-    rel_error = np.exp(log_returns.sum()) * series_resampled.dropna().iloc[0] / series_resampled.dropna().iloc[-1] - 1
+    series_reconstructed = cleaned_series.iloc[offset] * np.exp(log_returns.cumsum())
+    rel_error = (series_reconstructed / series - 1).abs().sum()
     assert rel_error <= 1e-8, 'Warning! Sum of log returns was not equal to log return over entire period (relative error: {})'.format(rel_error)
-    
+
     return log_returns
 
 

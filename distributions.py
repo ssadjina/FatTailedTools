@@ -73,7 +73,8 @@ def fit_dist_parameter_over_time(series, guess_exponent=0.5, guess_log_range=0.3
     '''
     Estimates the relationship between distribution parameters (scale or tail exponent) and time as given by 
     the Pandas Series 'series'.
-    Returns a factor and an exponent, such that the estimated parameter = factor * days_to_expiration ** exponent.
+    Returns a factor and an exponent, such that the estimated parameter = factor * days_to_expiration ** exponent,
+    as well as the MSE error of the fit.
     'guess_exponent' is the initial guess for the exponent.
     'guess_log_range' can be adjusted to widen or narrow the (log) range over which the guesses are varied for optimization.
     '''
@@ -104,5 +105,5 @@ def fit_dist_parameter_over_time(series, guess_exponent=0.5, guess_log_range=0.3
     plt.plot(series.index, best_factor*np.power(series.index, best_exponent), color='C7', linestyle='--', label='{:.5f}*t**{:.3f}'.format(best_factor, best_exponent));
     plt.legend();
     
-    return best_exponent, best_factor
+    return best_exponent, best_factor, min_error
     

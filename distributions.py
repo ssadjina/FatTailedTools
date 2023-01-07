@@ -70,10 +70,9 @@ def get_alphas_from_JointDistribution(joint_dist):
 
 
 
-def fit_dist_parameter_over_time(series, guess_exponent=0.5, guess_log_range=0.35):
+def fit_scale_over_time(series, guess_exponent=0.5, guess_log_range=0.35):
     '''
-    Estimates the relationship between distribution parameters (scale or tail exponent) and time as given by 
-    the Pandas Series 'series'.
+    Estimates the relationship between the scale of a distribution and time as given by the Pandas Series 'series'.
     Returns a factor and an exponent, such that the estimated parameter = factor * days_to_expiration ** exponent,
     as well as the MSE error of the fit.
     'guess_exponent' is the initial guess for the exponent.

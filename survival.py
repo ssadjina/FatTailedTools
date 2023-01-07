@@ -15,9 +15,11 @@ def get_survival_function(series, inclusive=True):
     '''
     Calculates a (one-sided) survival function from (the absolute values of) a Pandas Series 'series'.
     Returns a Pandas DataFrame with the columns "Values", X, and "P", P(x >= X), keeping the index (and NAs dropped).
-    If 'inclusive', P(x >= X) is used and the largest data point is plotted. Else, P(x > X) is used and the largest data point is not plotted. The latter is consistent with, e.g., seaborn.ecdfplot(complementary=True).
+    If 'inclusive', P(x >= X) is used and the largest data point is plotted.
+    Else, P(x > X) is used and the largest data point is not plotted.
+    The latter is consistent with, e.g., seaborn.ecdfplot(complementary=True).
     '''
-    
+
     # Take absolute values and drop NAs
     abs_series = series.dropna().abs()
     
@@ -30,8 +32,6 @@ def get_survival_function(series, inclusive=True):
     
     # Get survival probabilites
     survival['P'] = 1. - (np.array(range(len_series)) + (1.-inclusive))/(len_series)
-    
-    return survival
     
     return survival
 

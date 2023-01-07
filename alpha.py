@@ -119,11 +119,9 @@ def fit_alpha_linear_fast(series):
     '''
     
     # Get survival function
-    abs_series = series.dropna().abs().sort_values(ascending=True).values
-    x = np.log10(abs_series)
-    y = np.log10(
-        [(abs_series >= value).mean() for value in abs_series]
-    )
+    S = survival.get_survival_function(series)
+    x = np.log10(S['Values'])
+    y = np.log10(S['P'])
 
     # Perform fast linear fit
     slope, intercept = fast_linear_fit(x, y)
@@ -229,14 +227,13 @@ def fit_alpha_and_scale_linear_subsampling(
         subsample = get_tail(subsample).dropna()
 
         # Get survival function
-        abs_series = subsample.dropna().abs().sort_values(ascending=True)
+        S = survival.get_survival_function(subsample)
+        abs_series = S['Values']
         if len(abs_series) < 3 + min_samples:
             warnings.warn('Not enough data to select optimal threshold. Continuing. Get more data, or try decreasing \'min_samples\', or increasing \'frac\'.')
             continue
         x = np.log10(abs_series)
-        y = np.log10(
-            [(abs_series >= value).mean() for value in abs_series]
-        )
+        y = np.log10(S['P'])
 
         # --------------------------------------------------------------------------------------------
         # Handle uncertainty wrt. the "correct" threshold, that is, where the tail starts

@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 
 # Define new class that allows us to assemble a hybrid PDF with different left and right sides
 class JointDistribution(rv_continuous):
-    def __init__(self, dist_left, dist_right):
+    def __init__(self, dist_left, dist_right, *args, **kwargs):
         self.dist_left  = dist_left
         self.dist_right = dist_right
-        super().__init__()
+        super().__init__(*args, **kwargs)
+        self.name = 'Asymm. Student\'s t'
         
     # PDF
     def _pdf(self, x):

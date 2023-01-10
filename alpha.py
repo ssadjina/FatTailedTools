@@ -761,3 +761,18 @@ def hill_estimator(series, loc=0, plot=False, tail_frac=None):
         plt.legend(['Estimator', 'Result ({:.2f})'.format(alpha)]);
 
     return alpha
+
+
+
+def share_of_total(percentage, alpha, return_value_nan=1):
+    '''
+    Calculates the share of the total that a certain top percentage of a population holds collectively.
+    :param percentage: The percentage of the largest individuals in a population to consider.
+    :param alpha: The tail exponent of the Pareto distribution.
+    :param return_value_nan: The value to return when alpha is not > 1.
+    :return: The share of the total. If alpha is not > 1, 'return_value_nan' is returned.
+    '''
+
+    result = np.exp((1 - 1 / alpha) * np.log(percentage))
+
+    return np.where(alpha > 1, result, return_value_nan)

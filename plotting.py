@@ -396,3 +396,44 @@ def mean_excess_plot(series):
     plt.xlabel('Threshold');
     plt.ylabel('Mean Excess');
     plt.show()
+
+
+
+def plot_lorenz_curve(series, ascending=True, alpha=None):
+    '''
+    Plots the Lorenz curve of the absolute values of samples.
+    A Lorenz curve shows the cumulative fraction of the total quantity against the cumulative fraction
+    of the ordered population.
+    :param series: A Pandas Series object containing the data. Note that the absolute values will be used.
+    :param ascending: If true, samples are ordered from smallest to largest, corresponding to the traditional Lorenz curve.
+    If false, from largest to smallest.
+    :return: The data used for the plot as a Pandas Series.
+    '''
+
+    # Prepare data
+    abs_series_sorted = series.dropna().abs().sort_values(ascending=ascending)
+
+    # Replace index with the required percentage share
+    series_new_index = abs_series_sorted.reset_index(drop=True)
+    series_new_index.index += 1                            # +1 so we start counting at 1 (not zero) samples
+    series_new_index.index /= len(series_new_index) / 100  # Get percentage share
+
+    # Plot data
+    (series_new_index.cumsum()/series_new_index.sum() * 100).plot(color='C0', figsize=figsize, label='Observed');
+    plt.xlim([series_new_index.index.min(), series_new_index.index.max()]);
+    plt.ylim([0, 100]);
+    plt.ylabel('Cumulative fraction of total [%]');
+    plt.xlabel('Cumulative fraction of population [%]');
+    plt.title('Lorenz curve');
+
+    # If a tail exponent 'alpha' is given, also plot the theoretical curve
+    if alpha is not None:
+        x_plot = np.linspace(0, 100, 1000)
+        plt.plot(x_plot, (ascending + (1 - 2 * ascending) * share_of_total(
+            percentage = ascending + (1 - 2 * ascending) * x_plot / 100,
+            alpha=alpha
+        )) * 100, color='C3', label='Expected (Tail exponent = {:.2f})'.format(alpha));
+
+        plt.legend();
+
+    return series_new_index

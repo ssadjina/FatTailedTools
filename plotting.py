@@ -399,14 +399,17 @@ def mean_excess_plot(series):
 
 
 
-def plot_lorenz_curve(series, ascending=True, alpha=None):
+def plot_lorenz_curve(series, ascending=True, tail_exponent=None):
     '''
     Plots the Lorenz curve of the absolute values of samples.
     A Lorenz curve shows the cumulative fraction of the total quantity against the cumulative fraction
     of the ordered population.
     :param series: A Pandas Series object containing the data. Note that the absolute values will be used.
-    :param ascending: If true, samples are ordered from smallest to largest, corresponding to the traditional Lorenz curve.
+    :param ascending: If true, samples are ordered from smallest to largest,
+    corresponding to the traditional Lorenz curve.
     If false, from largest to smallest.
+    :param tail_exponent: The tail exponent that the series is assumed to follow. If not None, plot the theoretically
+    expected Lorenz curve.
     :return: The data used for the plot as a Pandas Series.
     '''
 
@@ -427,12 +430,12 @@ def plot_lorenz_curve(series, ascending=True, alpha=None):
     plt.title('Lorenz curve');
 
     # If a tail exponent 'alpha' is given, also plot the theoretical curve
-    if alpha is not None:
-        x_plot = np.linspace(0, 100, 1000)
-        plt.plot(x_plot, (ascending + (1 - 2 * ascending) * share_of_total(
+    if tail_exponent is not None:
+        x_plot = np.linspace(series_new_index.index.min(), 100, 1000)
+        plt.plot(x_plot, (ascending + (1 - 2 * ascending) * alpha.share_of_total(
             percentage = ascending + (1 - 2 * ascending) * x_plot / 100,
-            alpha=alpha
-        )) * 100, color='C3', label='Expected (Tail exponent = {:.2f})'.format(alpha));
+            alpha=tail_exponent
+        )) * 100, color='C3', label='Expected (Tail exponent = {:.2f})'.format(tail_exponent));
 
         plt.legend();
 

@@ -764,7 +764,7 @@ def hill_estimator(series, loc=0, plot=False, tail_frac=None):
 
 
 
-def share_of_total(percentage, alpha, return_value_nan=1):
+def share_of_total(percentage, alpha, return_value_nan=np.nan):
     '''
     Calculates the share of the total that a certain top percentage of a population holds collectively.
     :param percentage: The percentage of the largest individuals in a population to consider.

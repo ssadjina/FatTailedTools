@@ -112,21 +112,24 @@ def fast_linear_fit(x, y):
 
 
 
-def fit_alpha_linear_fast(series):
+def fit_alpha_linear_fast(series, threshold=0):
     '''
     Estimates the tail parameter by fitting a linear function to the log-log survival function.
     Optimized for speed to be used with, for example, subsampling and Monte Carlo simulations.
+    :param threshold: Gives the threshold for which the data is fitted.
     '''
     
     # Get survival function
-    abs_series = series.dropna().abs().sort_values(ascending=True).values
-    x = np.log10(abs_series)
-    y = np.log10(
-        [(abs_series >= value).mean() for value in abs_series]
-    )
+    S = survival.get_survival_function(series)
+    x = np.log10(S['Values'])
+    y = np.log10(S['P'])
+
+    # Select only the samples of the survival function which are >= threshold for the fit
+    x_fit = x[S['Values'] >= threshold]
+    y_fit = y[S['Values'] >= threshold]
 
     # Perform fast linear fit
-    slope, intercept = fast_linear_fit(x, y)
+    slope, intercept = fast_linear_fit(x_fit, y_fit)
 
     # Get alpha
     alpha = -slope
@@ -216,7 +219,7 @@ def fit_alpha_and_scale_linear_subsampling(
         time_shift = np.random.choice(range(period_days))
 
         # Calculate the log returns over 'period' and using a shift 'time_shift'
-        series     = returns.get_log_returns(data, periods='{}d'.format(period_days), offset=time_shift)
+        series     = returns.get_log_returns(data, periods='{}d'.format(period_days), offset=time_shift).dropna()
 
         # --------------------------------------------------------------------------------------------
         # Use bootstrapping to include the uncertainty wrt. to the data.
@@ -229,14 +232,13 @@ def fit_alpha_and_scale_linear_subsampling(
         subsample = get_tail(subsample).dropna()
 
         # Get survival function
-        abs_series = subsample.dropna().abs().sort_values(ascending=True)
+        S = survival.get_survival_function(subsample)
+        abs_series = S['Values']
         if len(abs_series) < 3 + min_samples:
             warnings.warn('Not enough data to select optimal threshold. Continuing. Get more data, or try decreasing \'min_samples\', or increasing \'frac\'.')
             continue
         x = np.log10(abs_series)
-        y = np.log10(
-            [(abs_series >= value).mean() for value in abs_series]
-        )
+        y = np.log10(S['P'])
 
         # --------------------------------------------------------------------------------------------
         # Handle uncertainty wrt. the "correct" threshold, that is, where the tail starts

@@ -12,8 +12,8 @@ def get_returns(series, periods='1d', offset=0):
     # Drop NAs
     cleaned_series = series.dropna()
 
-    # Resample series over periods
-    series_resampled = cleaned_series.iloc[offset:].resample(periods).first()
+    # Resample series over periods using the specified offset and ffill
+    series_resampled = cleaned_series.iloc[offset:].resample(periods).first().ffill()
 
     # Calculate returns
     returns = series_resampled/series_resampled.shift(1) - 1
@@ -35,8 +35,8 @@ def get_log_returns(series, periods='1d', offset=0):
     # Drop NAs
     cleaned_series = series.dropna()
 
-    # Resample series over periods
-    series_resampled = cleaned_series.iloc[offset:].resample(periods).first()
+    # Resample series over periods using the specified offset and ffill
+    series_resampled = cleaned_series.iloc[offset:].resample(periods).first().ffill()
 
     # Calculate log returns
     log_returns = np.log(series_resampled/series_resampled.shift(1))

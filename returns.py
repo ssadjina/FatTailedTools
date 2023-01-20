@@ -20,7 +20,7 @@ def get_returns(series, periods='1d', offset=0, drop_zeros=True):
     # Drop NAs
     cleaned_series = series.dropna()
 
-    # Resample series over periods using the specified offset and ffill
+    # Resample series over periods using the specified offset and forward-fill
     series_resampled = cleaned_series.iloc[offset:].resample(periods).first().ffill()
 
     # Calculate returns
@@ -52,7 +52,7 @@ def get_log_returns(series, periods='1d', offset=0, drop_zeros=True):
     # Drop NAs
     cleaned_series = series.dropna()
 
-    # Resample series over periods using the specified offset and ffill
+    # Resample series over periods using the specified offset and forward-fill
     series_resampled = cleaned_series.iloc[offset:].resample(periods).first().ffill()
 
     # Calculate log returns
@@ -87,42 +87,68 @@ def get_log_returns_from_returns(series):
 
 
 
-def get_max_drawdowns(series, n, use_log=True):
+def get_max_drawdowns(series, periods='1d', offset=0, use_log=True, drop_zeros=True):
     '''
-    Returns the maximum drawdowns of a Pandas Series using "n" periods.
-    If "use_log", uses logarithmic returns/drawdowns.
+    Returns the maximum drawdowns of a Pandas Series using period "periods" with an offset of 'offset' samples.
+    :param series: Pandas Series holding the time series data of prices.
+    :param periods: Specifies the time period over which to calculate the maximum drawdowns (e.g. daily, weekly).
+    :param offset: Number of samples to shift 'series' by before calculating draws. This can be useful to choose the bias when calculating over time periods longer than the frequency of the price data.
+    :param use_log: Whether or not to use logarithmic (or geometric) draws.
+    :param drop_zeros: If true, samples where the maximum drawdowns are zero will be dropped before returning. This is useful for avoiding that the results contain a lot of zeros because missing prices were forward-filled before calculating draws.
+    :return: A Pandas Series holding the resulting maximum drawdowns over the specified period with specified sample offset.
     '''
-    
-    cleaned_series = series.dropna()
-    
-    # Calculate the max drawdown in the past window days for each day in the series.
-    Roll_Max = cleaned_series.rolling(str(n) + 'd', min_periods=1).max()
-    
+
+    # Drop NAs and apply specified sample offset
+    cleaned_series = series.dropna().iloc[offset:]
+
+    # Get the rolling maximum of the series over periods and forward-fill
+    rolling_max = cleaned_series.rolling(periods, min_periods=1).max().ffill()
+
+    # Calculate the changes (logarithmic or geometric) from the rolling max
     if use_log:
-        Daily_Drawdown = np.log(cleaned_series/Roll_Max)
+        drawdowns = np.log(cleaned_series/rolling_max)
     else:
-        Daily_Drawdown = cleaned_series/Roll_Max - 1.0
-    
-    # Next we calculate the minimum (negative) daily drawdown in that window.
-    return Daily_Drawdown.resample(str(n) + 'd').min()
+        drawdowns = cleaned_series/rolling_max - 1.0
+
+    # Resample and get the minimum over the periods
+    max_drawdowns = drawdowns.resample(periods, label='right').min()
+
+    # Drop zeros introduced by using ffill()
+    if drop_zeros:
+        max_drawdowns = max_drawdowns.drop(max_drawdowns.index[max_drawdowns == 0])
+
+    return max_drawdowns
 
 
 
-def get_max_drawups(series, n, use_log=True):
+def get_max_drawups(series, periods='1d', offset=0, use_log=True, drop_zeros=True):
     '''
-    Returns the maximum drawups of a Pandas Series using "n" periods.
-    If "use_log", uses logarithmic returns/drawups.
+    Returns the maximum drawups of a Pandas Series using period "periods" with an offset of 'offset' samples.
+    :param series: Pandas Series holding the time series data of prices.
+    :param periods: Specifies the time period over which to calculate the maximum drawups (e.g. daily, weekly).
+    :param offset: Number of samples to shift 'series' by before calculating draws. This can be useful to choose the bias when calculating over time periods longer than the frequency of the price data.
+    :param use_log: Whether or not to use logarithmic (or geometric) draws.
+    :param drop_zeros: If true, samples where the maximum drawups are zero will be dropped before returning. This is useful for avoiding that the results contain a lot of zeros because missing prices were forward-filled before calculating draws.
+    :return: A Pandas Series holding the resulting maximum drawups over the specified period with specified sample offset.
     '''
-    
-    cleaned_series = series.dropna()
-    
-    # Calculate the max drawup in the past window days for each day in the series.
-    Roll_Min = cleaned_series.rolling(str(n) + 'd', min_periods=1).min()
-    
+
+    # Drop NAs and apply specified sample offset
+    cleaned_series = series.dropna().iloc[offset:]
+
+    # Get the rolling minimum of the series over periods and forward-fill
+    rolling_min = cleaned_series.rolling(periods, min_periods=1).min().ffill()
+
+    # Calculate the changes (logarithmic or geometric) from the rolling max
     if use_log:
-        Daily_Drawup = np.log(cleaned_series/Roll_Min)
+        drawups = np.log(cleaned_series/rolling_min)
     else:
-        Daily_Drawup = cleaned_series/Roll_Min - 1.0
-    
-    # Next we calculate the maximum (positive) daily drawup in that window.
-    return Daily_Drawup.resample(str(n) + 'd').max()
+        drawups = cleaned_series/rolling_min - 1.0
+
+    # Resample and get the maximum over the periods
+    max_drawups = drawups.resample(periods, label='right').max()
+
+    # Drop zeros introduced by using ffill()
+    if drop_zeros:
+        max_drawups = max_drawups.drop(max_drawups.index[max_drawups == 0])
+
+    return max_drawups

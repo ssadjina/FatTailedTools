@@ -166,6 +166,7 @@ def fit_alpha_and_scale_linear_subsampling(
         data,
         period_days,
         tail,
+        transformation_func  = returns.get_log_returns,
         plot                 = True,
         frac                 = 0.9,
         min_samples          = 9,
@@ -174,17 +175,20 @@ def fit_alpha_and_scale_linear_subsampling(
         n_debug_plots        = np.nan
 ):
     '''
-    Estimates the tail exponent and the scale of a Student's t distribution for the left or right tail of the log returns of a time series.
-    :param data:         Time series data passed as pandas.Series with a DateTimeIndex.
-    :param period_days:  The time period used to generate the log returns in days passed as integer.
-    :param tail:         Determines the side of the distribution ('left' or 'right').
-    :param plot:         Whether to plot the multivariate distribution over scales and tail coefficients.
-    :param frac:         The fraction of all data to use for bootstrapping.
-    :param min_samples:  Smallest number of samples required for the linear fit.
-    :param n_subsamples: Number of times parameters are estimated using bootstrap.
+    Estimates the tail exponent and the scale of a Student's t distribution for the left or right tail of the
+    log returns of a time series.
+    :param data:          Time series data passed as pandas.Series with a DateTimeIndex.
+    :param period_days:   The time period used to generate the log returns in days passed as integer.
+    :param tail:          Determines the side of the distribution ('left' or 'right').
+    :param transformation_func: A function determining how to transform the time series. Uses returns.get_log_returns by
+    default to calculate logarithmic returns. Use, e.g. returns.get_max_drawdowns to sue maximum drawdowns instead.
+    :param plot:          Whether to plot the multivariate distribution over scales and tail coefficients.
+    :param frac:          The fraction of all data to use for bootstrapping.
+    :param min_samples:   Smallest number of samples required for the linear fit.
+    :param n_subsamples:  Number of times parameters are estimated using bootstrap.
     :param n_fits_per_subsample:  Number of thresholds to check to determine optimal threshold (and help estimate parameters).
     :param n_debug_plots: Produces a number of 'n_debug_plots' plots to help check for errors in the fitting routine.
-    :return: The estimated tail exponent ('estimated_tail_exponent'), the estimated scale ('estimated_scale') of a Student's t
+    :return:              The estimated tail exponent ('estimated_tail_exponent'), the estimated scale ('estimated_scale') of a Student's t
     distribution with the estimated tail exponent, a pandas DataFrame holding all results ('df_results'), and a dictionary ('dists')
     of the form {parameter: (dist, params)} that holds two fitted univariate lognormal distributions ('dist') and their parameters
     ('params') for the scale ('Scale') and for the tail coefficient ('Tail Coefficient'), respectively.
@@ -218,8 +222,9 @@ def fit_alpha_and_scale_linear_subsampling(
         # Randomly select a time shift/origin
         time_shift = np.random.choice(range(period_days))
 
-        # Calculate the log returns over 'period' and using a shift 'time_shift'
-        series     = returns.get_log_returns(data, periods='{}d'.format(period_days), offset=time_shift).dropna()
+        # Apply the transformation over 'period' and using a shift 'time_shift'.
+        # By default, this will be log returns.
+        series     = transformation_func(data, periods='{}d'.format(period_days), offset=time_shift).dropna()
 
         # --------------------------------------------------------------------------------------------
         # Use bootstrapping to include the uncertainty wrt. to the data.
@@ -486,18 +491,19 @@ def plot_alpha_and_scale_fit_hist(
 
     # Calculate the PDF at each point on the grid
     pos = np.empty(X.shape + (2,))
-    pos[:, :, 0] = transform_lognormal_to_normal(X, *lognorm_params_x)
-    pos[:, :, 1] = transform_lognormal_to_normal(Y, *lognorm_params_y)
+    pos[:, :, 0] = transform_lognormal_to_normal(X, *dists[x][1])
+    pos[:, :, 1] = transform_lognormal_to_normal(Y, *dists[y][1])
     Z = dists[(x, y)].pdf(pos)
 
     # Plot the contours
     g.ax_joint.contour(X, Y, Z, cmap=LinearSegmentedColormap.from_list(
         'cmap_transparent_to_C3', [(*to_rgb('C3'), 0), (*to_rgb('C3'), 1)]))
 
-    # Add best guesses
-    x_guess = np.exp(np.log(df[x]).mean())
-    y_guess = np.exp(np.log(df[y]).mean())
+    # Add best guesses (= means of the multivariate lognormal)
+    x_guess = transform_normal_to_lognormal(dists[(x, y)].mean[0], *dists[x][1])
+    y_guess = transform_normal_to_lognormal(dists[(x, y)].mean[1], *dists[y][1])
     g.refline(x=x_guess, y=y_guess, c='C3');
+    print(x_guess, y_guess)
 
     plt.show();
 

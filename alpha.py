@@ -393,17 +393,6 @@ def fit_alpha_and_scale_linear_subsampling(
     df_results['Tail Coefficient'] = 1 / df_results['Tail Exponent']
 
     # --------------------------------------------------------------------------------------------
-    # Calculate the final best estimate for the tail exponent and the scale.
-    # We assume that everything (tail exponent, tail coefficient, scale) is log normal distributed.
-    # Note that the log normal approximates the normal for small standard deviations.
-
-    # The best tail exponent is the inverse of the exponential of the average log tail coefficient
-    estimated_tail_exponent = 1/np.exp(np.log(df_results['Tail Coefficient']).mean())
-
-    #The best scale is the exponential of the average log scale
-    estimated_scale         = np.exp(np.log(df_results['Scale']).mean())
-
-    # --------------------------------------------------------------------------------------------
     # If 'plot', plot the results for the tail coefficient and the scale
     if plot:
 
@@ -427,6 +416,20 @@ def fit_alpha_and_scale_linear_subsampling(
         # Fit univariate distributions
         dists.update({'Scale':            (lognorm(*lognorm_params_x), lognorm_params_x)})
         dists.update({'Tail Coefficient': (lognorm(*lognorm_params_y), lognorm_params_y)})
+
+    # --------------------------------------------------------------------------------------------
+    # Calculate the final best estimate for the tail exponent and the scale.
+    # We assume that everything (tail exponent, tail coefficient, scale) is log normal distributed.
+    # Note that the log normal approximates the normal for small standard deviations.
+
+    # Get mean for tail coefficient from the multivariate lognormal
+    estimated_tail_coefficient = transform_normal_to_lognormal(dists[('Scale', 'Tail Coefficient')].mean[1], *dists['Tail Coefficient'][1])
+
+    # The estimated tail exponent is the inverse of the estimated tail coefficient
+    estimated_tail_exponent    = 1. / estimated_tail_coefficient
+
+    # Get mean for scale from the multivariate lognormal
+    estimated_scale            = transform_normal_to_lognormal(dists[('Scale', 'Tail Coefficient')].mean[0], *dists['Scale'][1])
 
     return estimated_tail_exponent, estimated_scale, df_results, dists
 

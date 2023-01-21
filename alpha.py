@@ -553,8 +553,8 @@ def fit_multivariate_lognormal(x, y):
     '''
 
     # Get lognormal fit parameters to be able to scale the data properly
-    lognorm_params_x = lognorm.fit(x)
-    lognorm_params_y = lognorm.fit(y)
+    lognorm_params_x = lognorm.fit(x, loc=np.median(x))
+    lognorm_params_y = lognorm.fit(y, loc=np.median(y))
 
     # Get log transforms with the correct scaling
     log_x = transform_lognormal_to_normal(x, *lognorm_params_x)

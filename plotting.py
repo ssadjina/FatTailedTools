@@ -4,7 +4,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-figsize=(10, 5)
+FIG_SIZE=(10, 5)
 
 
 
@@ -20,7 +20,7 @@ def plot_histograms(series, distribution=None):
     Plots two histograms of a Pandas Series, one on linear axis and one on logarithmic axis.
     A scipy.stats distribution object can be passed via "distribution" to also plot the PDF.
     '''
-    fig, ax = plt.subplots(2, 1, figsize=(figsize[0], figsize[0]));
+    fig, ax = plt.subplots(2, 1, figsize=(FIG_SIZE[0], FIG_SIZE[0]));
 
     # Plot linear
     sns.histplot(data=series, stat='probability' if distribution is None else 'density', kde=True if distribution is None else False, ax=ax[0]);
@@ -52,7 +52,7 @@ def plot_gumbel_test(series):
     # Right tail (maxima)
     if bool_right_tail:
         N1t_gains = 1 + (cleaned_series.iloc[1:] > cleaned_series.iloc[1:].shift(1).cummax()).cumsum()
-        N1t_gains.plot(color='C0', figsize=figsize, label='Maxima');
+        N1t_gains.plot(color='C0', figsize=FIG_SIZE, label='Maxima');
 
     # Left tail (minima)
     if bool_left_tail:
@@ -75,24 +75,30 @@ def max_sum_plot(series):
     Plots maximum-to-sum plots for all four moments of a Pandas Series.
     '''
 
+    # Prepare data and take absolute values
     cleaned_series = abs(series.dropna())
 
-    fig, ax = plt.subplots(2, 2, figsize=(figsize[0], figsize[0]));
+    # Calculate max-to-sum for the first four moments
+    plots = []
 
-    for idx, axis in enumerate(ax.reshape(-1)):
+    for moment in range(1, 5):
 
-        sns.lineplot(
-            data=((cleaned_series**(idx + 1)).cummax())/((cleaned_series**(idx + 1)).cumsum()),
-            ax=axis
-        ).set_title('{}. Moment'.format(idx + 1));
-        axis.set_xlabel('Samples');
+        plots.append(
+            ((cleaned_series**moment).cummax())/((cleaned_series**moment).cumsum())
+        )
+
+    # Assemble plots
+    plots = pd.concat(plots, axis=1)
+
+    # Rename columns
+    plots.columns = ['{}. Moment'.format(moment) for moment in range(1, 5)]
+
+    # Plot everything in a 2x2 subplot grid
+    plots.plot(subplots=True, layout=(2, 2), figsize=(FIG_SIZE[0], FIG_SIZE[0]), grid=True, color='C0', title='Maximum-to-Sum Plot');
 
 
-    fig.suptitle('Maximum-to-Sum Plot');
 
-
-
-def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(10, 5), point_size=5, title_annotation=None):
+def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=FIG_SIZE, point_size=5, title_annotation=None):
     '''
     Plots a one-sided (abs) survival function for a Pandas Series, and returns the survival data itself ("survival_func") and the axis object.
     If "tail_zoom", the tail part of the distribution is visualized.
@@ -151,7 +157,7 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=(
 
 
 
-def plot_twosided_survival_function(series, distribution=None, figsize=(10, 5), point_size=5, title_annotation=None, log_threshold=None, n_subsets=1, subset_frac=0.7):
+def plot_twosided_survival_function(series, distribution=None, figsize=FIG_SIZE, point_size=5, title_annotation=None, log_threshold=None, n_subsets=1, subset_frac=0.7):
     '''
     Plots a two-sided survival function for a Pandas Series ("series") using a linear-log axis for the values,
     and a logit axis for the probabilities to show the entire distribution in one plot.
@@ -282,7 +288,7 @@ def graphical_alpha_estimation(series, loc=0, frac=0.7, n_subsets=30, plot=True,
 
     if plot:
 
-        fig, ax = plt.subplots(1, 2, constrained_layout=True, figsize=figsize, sharex=False, sharey=False)
+        fig, ax = plt.subplots(1, 2, constrained_layout=True, figsize=FIG_SIZE, sharex=False, sharey=False)
 
         MIN_THRESHOLD = cleaned_series.quantile(0.25)
 
@@ -329,7 +335,7 @@ def plot_empirical_kappa_n(series, n_bootstrapping=10000, n_values=list(range(20
 
 
     with sns.axes_style('whitegrid'):
-        fig, ax = plt.subplots(1, figsize=figsize);
+        fig, ax = plt.subplots(1, figsize=FIG_SIZE);
 
         sns.scatterplot(x=n_values, y=y_right, color='C0', s=9, ax=ax);
         sns.scatterplot(x=n_values, y=y_left , color='C3', s=9, ax=ax);
@@ -359,7 +365,7 @@ def plot_lindy_test(series):
     lindy['Lindy'] = lindy['k'].map(lambda k: ((-cleaned_series > k) * (-cleaned_series)).mean() / ((-cleaned_series > k).mean()) / k)
 
     # Plot
-    fig, ax = plt.subplots(1, figsize=figsize);
+    fig, ax = plt.subplots(1, figsize=FIG_SIZE);
     sns.lineplot(data=lindy, x='k', y='Lindy', color='C3', ax=ax).set_title('\"Lindy Measure\"');
 
     return lindy
@@ -390,7 +396,7 @@ def mean_excess_plot(series):
 
         _y.append(me)
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize);
+    fig, ax = plt.subplots(1, 1, figsize=FIG_SIZE);
     plt.plot(_x, _y, linestyle='', marker='.');
     plt.title('Mean Excess Plot');
     plt.xlabel('Threshold');
@@ -422,7 +428,7 @@ def plot_lorenz_curve(series, ascending=True, tail_exponent=None):
     series_new_index.index /= len(series_new_index) / 100  # Get percentage share
 
     # Plot data
-    (series_new_index.cumsum()/series_new_index.sum() * 100).plot(color='C0', figsize=figsize, label='Observed');
+    (series_new_index.cumsum()/series_new_index.sum() * 100).plot(color='C0', figsize=FIG_SIZE, label='Observed');
     plt.xlim([series_new_index.index.min(), series_new_index.index.max()]);
     plt.ylim([0, 100]);
     plt.ylabel('Cumulative fraction of total [%]');

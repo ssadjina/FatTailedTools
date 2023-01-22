@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import warnings
 
 FIG_SIZE=(10, 5)
 
@@ -246,8 +247,9 @@ def graphical_alpha_estimation(series, loc=0, frac=0.7, n_subsets=30, plot=True,
     assert len_cleaned_series >= MIN_N_SAMPLES, 'Too few samples (n = {}). Need at least {} samples.'.format(len(cleaned_series), MIN_N_SAMPLES)
 
     # Set up arrays to save results
-    results_hill = []
+    #results_hill = []
     results_zipf = []
+    warnings.warn('Hill estimator temporarily deactivated due to a potential bug in the calculations.')
 
     # Choose a "safe" fraction of samples to draw for each subset that accounts for an upper bound 'max_samples_per_subset'
     safe_frac = min(max_samples_per_subset / len_cleaned_series, frac)
@@ -262,16 +264,16 @@ def graphical_alpha_estimation(series, loc=0, frac=0.7, n_subsets=30, plot=True,
         zipf_estimator = ordered_series.expanding(min_periods=MIN_N_SAMPLES).apply(alpha.fit_alpha_linear_fast)
 
         # Hill estimator
-        hill_estimator = 1. / ((np.log(ordered_series).expanding(min_periods=MIN_N_SAMPLES).mean() - np.log(ordered_series)).dropna())
+        #hill_estimator = 1. / ((np.log(ordered_series).expanding(min_periods=MIN_N_SAMPLES).mean() - np.log(ordered_series)).dropna())
 
         # Collect results
-        results_hill.append(hill_estimator)
+        #results_hill.append(hill_estimator)
         results_zipf.append(zipf_estimator)
 
     # Order results to get back to original ordered samples
-    results_hill = pd.concat(results_hill, axis=1)
+    #results_hill = pd.concat(results_hill, axis=1)
     results_zipf = pd.concat(results_zipf, axis=1)
-    results_hill.columns = range(n_subsets)
+    #results_hill.columns = range(n_subsets)
     results_zipf.columns = range(n_subsets)
 
     # Assemble DataFrame for Zipf estimator
@@ -280,11 +282,11 @@ def graphical_alpha_estimation(series, loc=0, frac=0.7, n_subsets=30, plot=True,
     df_longform_zipf['Order Statistics'] = (df_longform_zipf['Order Statistics'] / safe_frac).astype('int')
     df_longform_zipf['Threshold'] = cleaned_series.sort_values(ascending=False).reset_index(drop=True).loc[df_longform_zipf['Order Statistics']].values
 
-    # Assemble DataFrame for Hill estimator
-    df_longform_hill = pd.DataFrame(results_hill.stack()).reset_index()
-    df_longform_hill.columns = ['Order Statistics', 'Experiment', 'Estimator']
-    df_longform_hill['Order Statistics'] = (df_longform_hill['Order Statistics'] / safe_frac).astype('int')
-    df_longform_hill['Threshold'] = cleaned_series.sort_values(ascending=False).reset_index(drop=True).loc[df_longform_hill['Order Statistics']].values
+    ## Assemble DataFrame for Hill estimator
+    #df_longform_hill = pd.DataFrame(results_hill.stack()).reset_index()
+    #df_longform_hill.columns = ['Order Statistics', 'Experiment', 'Estimator']
+    #df_longform_hill['Order Statistics'] = (df_longform_hill['Order Statistics'] / safe_frac).astype('int')
+    #df_longform_hill['Threshold'] = cleaned_series.sort_values(ascending=False).reset_index(drop=True).loc[df_longform_hill['Order Statistics']].values
 
     if plot:
 
@@ -294,10 +296,10 @@ def graphical_alpha_estimation(series, loc=0, frac=0.7, n_subsets=30, plot=True,
 
         # Plot estimators
         sns.lineplot(data=df_longform_zipf.loc[df_longform_zipf['Threshold'] >= MIN_THRESHOLD], x='Threshold', y='Estimator', errorbar=('sd', sd), ax=ax[0], label='Zipf plot fit');
-        sns.lineplot(data=df_longform_hill.loc[df_longform_hill['Threshold'] >= MIN_THRESHOLD], x='Threshold', y='Estimator', errorbar=('sd', sd), ax=ax[0], label='Hill estimator');
+        #sns.lineplot(data=df_longform_hill.loc[df_longform_hill['Threshold'] >= MIN_THRESHOLD], x='Threshold', y='Estimator', errorbar=('sd', sd), ax=ax[0], label='Hill estimator');
         ax[0].set_xscale('log');
         ax[0].set_ylabel('alpha (CI = {:.0%})'.format(1.-2.*(1.-norm.cdf(sd))));
-        ax[0].set_xlim([MIN_THRESHOLD, df_longform_hill['Threshold'].max()]);
+        ax[0].set_xlim([MIN_THRESHOLD, df_longform_zipf['Threshold'].max()]);
         ax[0].set_ylim([0, 6]);
         ax[0].grid(visible=True, which='both');
         ax[0].legend();
@@ -313,7 +315,7 @@ def graphical_alpha_estimation(series, loc=0, frac=0.7, n_subsets=30, plot=True,
         ax[1].set_ylabel('Survival probability');
 
     else:
-        return df_longform_hill, df_longform_zipf
+        return None, df_longform_zipf  # df_longform_hill, df_longform_zipf
 
 
 
@@ -371,11 +373,11 @@ def plot_lindy_test(series):
     lindy = pd.DataFrame(np.linspace(threshold_min, threshold_max, len(cleaned_series)), columns=['k'])
 
     # Calculate the expectation value for -X conditional on -X < k, divided by k.
-    lindy['Lindy'] = lindy['k'].map(lambda k: ((cleaned_series_abs > k) * (cleaned_series_abs)).mean() / ((cleaned_series_abs > k).mean()) / k)
+    lindy['E(-X | -X > k) / k'] = lindy['k'].map(lambda k: ((cleaned_series_abs > k) * (cleaned_series_abs)).mean() / ((cleaned_series_abs > k).mean()) / k)
 
     # Plot
     fig, ax = plt.subplots(1, figsize=FIG_SIZE);
-    sns.lineplot(data=lindy, x='k', y='Lindy', color='C3', ax=ax).set_title('\"Lindy Measure\"');
+    sns.lineplot(data=lindy, x='k', y='E(-X | -X > k) / k', color='C3', ax=ax).set_title('\"Lindy Test\"');
     ax.grid(which='both');
 
 

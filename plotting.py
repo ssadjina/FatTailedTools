@@ -357,18 +357,26 @@ def plot_lindy_test(series):
     See Nassim Taleb's "Statistical Consequences of Fat Tails".
     '''
 
-    cleaned_series = -series.abs().dropna()
+    # Prepare data
+    cleaned_series_abs = series.abs().dropna()
+    cleaned_series     = -cleaned_series_abs
 
-    lindy = pd.DataFrame(np.linspace(0.01, max(abs(cleaned_series)), len(cleaned_series)), index=cleaned_series.index, columns=['k'])
+    # Get guess for where tail starts
+    threshold_min = cleaned_series_abs.sort_values(ascending=False).iloc[int(alpha.get_tail_frac_guess(cleaned_series_abs)*len(cleaned_series))]
+
+    # Get guess for largest threshold to use
+    threshold_max = max(cleaned_series_abs)/2
+
+    # Set up thresholds
+    lindy = pd.DataFrame(np.linspace(threshold_min, threshold_max, len(cleaned_series)), columns=['k'])
 
     # Calculate the expectation value for -X conditional on -X < k, divided by k.
-    lindy['Lindy'] = lindy['k'].map(lambda k: ((-cleaned_series > k) * (-cleaned_series)).mean() / ((-cleaned_series > k).mean()) / k)
+    lindy['Lindy'] = lindy['k'].map(lambda k: ((cleaned_series_abs > k) * (cleaned_series_abs)).mean() / ((cleaned_series_abs > k).mean()) / k)
 
     # Plot
     fig, ax = plt.subplots(1, figsize=FIG_SIZE);
     sns.lineplot(data=lindy, x='k', y='Lindy', color='C3', ax=ax).set_title('\"Lindy Measure\"');
-
-    return lindy
+    ax.grid(which='both');
 
 
 

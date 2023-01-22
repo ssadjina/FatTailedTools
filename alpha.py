@@ -165,7 +165,7 @@ def fit_alpha(series, plot=True, return_additional_params=False, **kwargs):
 def fit_alpha_and_scale_linear_subsampling(
         data,
         period_days,
-        tail,
+        tail                 = 'both',
         transformation_func  = returns.get_log_returns,
         plot                 = True,
         frac                 = 0.9,
@@ -179,7 +179,7 @@ def fit_alpha_and_scale_linear_subsampling(
     log returns of a time series.
     :param data:          Time series data passed as pandas.Series with a DateTimeIndex.
     :param period_days:   The time period used to generate the log returns in days passed as integer.
-    :param tail:          Determines the side of the distribution ('left' or 'right').
+    :param tail:          Determines the side of the distribution ('left', 'right' or 'both' for absolute values).
     :param transformation_func: A function determining how to transform the time series. Uses returns.get_log_returns by
     default to calculate logarithmic returns. Use, e.g. returns.get_max_drawdowns to sue maximum drawdowns instead.
     :param plot:          Whether to plot the multivariate distribution over scales and tail coefficients.
@@ -202,13 +202,18 @@ def fit_alpha_and_scale_linear_subsampling(
     assert min_samples >= 3, '\'min_samples\' need to be at least 3.'
     min_samples_total = int(period_days * 1/frac * 2 * 2 * (min_samples + 1))
     assert len(data.dropna()) >= min_samples_total, 'Not enough samples in \'data\'. {} required, {} found.'.format(min_samples_total, len(data.dropna()))
-    assert tail in ['left', 'right'], '\'tail\' must be either \'left\' or \'right\'.'
+    assert tail in ['left', 'right', 'both'], '\'tail\' must be either \'left\', \'right\', or \'both\'.'
 
     # Set up
     results = []
 
-    # Get function to use to get left or right tail
-    get_tail = tails.get_left_tail if tail == 'left' else tails.get_right_tail
+    # Get function to use to get left or right tail, or both (absolute)
+    if tail == 'both':
+        get_tail = tails.get_both_tails
+    elif tail == 'left':
+        get_tail = tails.get_left_tail
+    else:
+        get_tail = tails.get_right_tail
 
     # Subsample to address various types of uncertainty when estimating the tail exponent:
     #    1. Use different time shifts/origins (if period > 1) to adress the uncertainty wrt. choosing the "right" shift/origin.

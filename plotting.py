@@ -151,8 +151,7 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=F
     ax.set_ylim([1/len(cleaned_series)/2, 1/3] if tail_zoom else [1/len(cleaned_series)/2, 1]);
     ax.set_xlabel('X');
     ax.set_ylabel('P(|x| > X)');
-    ax.grid(b=True, which='major')
-    ax.grid(b=True, which='minor')
+    ax.grid(visible=True, which='both')
 
     return survival_func, ax
 
@@ -196,7 +195,7 @@ def plot_twosided_survival_function(series, distribution=None, figsize=FIG_SIZE,
         # Plot
         sns.scatterplot(data=survival_func, x='Values', y='P', s=point_size, color='C0', alpha=1./n_subsets, ax=ax, label='Samples' if n_subsets==1 else '_nolegend_');
 
-    ax.grid(which='both');
+    ax.grid(visible=True, which='both');
     ax.set_xscale('symlog', linthresh=log_threshold, linscale=0.5, subs=range(2,10));
     ax.set_yscale('logit');
     ax.set_ylim([1./len(cleaned_series)/2., 1.-1./len(cleaned_series)/2.]);
@@ -378,7 +377,7 @@ def plot_lindy_test(series):
     # Plot
     fig, ax = plt.subplots(1, figsize=FIG_SIZE);
     sns.lineplot(data=lindy, x='k', y='E(-X | -X > k) / k', color='C3', ax=ax).set_title('\"Lindy Test\"');
-    ax.grid(which='both');
+    ax.grid(visible=True, which='both');
 
 
 

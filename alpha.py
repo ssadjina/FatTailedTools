@@ -354,6 +354,7 @@ def fit_alpha_and_scale_linear_subsampling(
             ax[1].set_yscale('log');
             ax[1].set_title('Survival Function');
             ax[1].set_xlabel('Threshold');
+            ax[1].axvspan(best_fit_threshold, x_plot_range[1], *y_plot_range, alpha=0.1, color='r');
 
             # Plot Student's t fit
             x_plot = np.geomspace(*x_plot_range, 500);
@@ -366,7 +367,6 @@ def fit_alpha_and_scale_linear_subsampling(
                 y[abs_series >= best_fit_threshold]
             )
             ax[1].plot(x_plot, 10**(intercept + np.log10(x_plot) * slope), c='C3', linestyle=':');
-            ax[1].axvspan(best_fit_threshold, x_plot_range[1], *y_plot_range, alpha=0.1, color='r');
             ax[1].set_xlim(x_plot_range);
             ax[1].set_ylim(y_plot_range);
             ax[1].legend(['Data', 'Tail', 'Fit (t)', 'Fit (linear)']);

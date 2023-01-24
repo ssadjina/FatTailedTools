@@ -103,7 +103,8 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=F
     '''
     Plots a one-sided (abs) survival function for a Pandas Series, and returns the survival data itself ("survival_func") and the axis object.
     If "tail_zoom", the tail part of the distribution is visualized.
-    A scipy.stats distribution object can be passed via "distribution" to also plot the PDF.
+    A scipy.stats distribution object can be passed via "distribution" to also plot the PDF. Use the form
+    (distribution, fitted_parameters).
     "title_annotation" allows to add text in parenthesis to the title of the plot.
     '''
 
@@ -157,68 +158,102 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=F
 
 
 
-def plot_twosided_survival_function(series, distribution=None, figsize=FIG_SIZE, point_size=5, title_annotation=None, log_threshold=None, n_subsets=1, subset_frac=0.7):
+def plot_twosided_survival_function(series, distribution=None, figsize=FIG_SIZE, point_size=5, title_annotation=None):
     '''
-    Plots a two-sided survival function for a Pandas Series ("series") using a linear-log axis for the values,
-    and a logit axis for the probabilities to show the entire distribution in one plot.
-    Returns the survival data itself ("survival_func") and the axis object.
-    A scipy.stats distribution object can be passed via "distribution" to also plot the complementary CDF (survival function).
-    "title_annotation" allows to add text in parenthesis to the title of the plot.
-    "log_threshold" determines the transition from linear to log on the x axis and can be adjusted for better viewing.
-    "n_subsets" control the number of randomly drawn subsets using a fraction "subset_frac" (with replacement) of "series".
+    Plots a two-sided survival function using a combination of subplots with linear and log-log axes to show the
+    entire distribution in one plot.
+    :param series: A Pandas Series holding the data.
+    :param distribution: A tuple holding a scipy.stats distribution object and its fitted parameters.
+    :param figsize: Size of figure to use for entire subplot.
+    :param point_size: Point size to use for plotting samples.
+    :param title_annotation: Allows to add text in parenthesis to the title of the plot.
+    :return: The survival data itself as a Pandas DataFrame (note: not the same as the plotted data) and the axis object.
     '''
 
-    # Clean and prepare data
-    cleaned_series = series.dropna()
+    # Get left and right sides of the series
+    series_left  = tails.get_left_tail( series)
+    series_right = tails.get_right_tail(series)
 
-    # Prepare figure and axes
+    # Get survival functions for left/right
+    survival_left  = survival.get_survival_function(series_left )
+    survival_right = survival.get_survival_function(series_right)
+
+    # Scale the functions accordingly
+    survival_left['P']  *= (series.dropna() <  0).mean()
+    survival_right['P'] *= (series.dropna() >= 0).mean()
+
+    # Set up plot
     plot_title = 'Survival Function'
     if title_annotation is not None:
         plot_title += ' ({})'.format(title_annotation)
     with sns.axes_style('whitegrid'):
-        fig, ax = plt.subplots(1, figsize=figsize);
+        fig, ax = plt.subplot_mosaic([['middle', 'middle'],['left', 'right']], figsize=figsize, gridspec_kw={'wspace': 0.1});
 
-    # Get series maximum
-    series_max = cleaned_series.abs().max()
+    # Set ticks for the log-log plots and move labels of right side to the right
+    ax['left'].yaxis.tick_left()
+    ax['right'].yaxis.tick_right()
+    ax['right'].yaxis.set_label_position("right")
 
-    # Threshold where the linear scale goes over to logarithmic
-    if log_threshold is None:
-        log_threshold = cleaned_series.abs().quantile(0.5)
+    # Add grids
+    ax['left'].grid(visible=True, which='both');
+    ax['right'].grid(visible=True, which='both');
+    ax['middle'].grid(visible=True, which='both');
 
-    for idx in range(n_subsets):
+    # Get scales for plotting
+    lin_scale = series.dropna().std()
+    max_scale = series.dropna().abs().max()
+    min_p     = 1/len(series.dropna())
 
-        subset = cleaned_series if n_subsets == 1 else cleaned_series.sample(frac=subset_frac, replace=True)
+    # Plot top subplot showing the middle of the data
+    sns.scatterplot(data=survival_left , x=-survival_left['Values'], y='P', s=point_size, c='C0', ax=ax['middle']);
+    sns.scatterplot(data=survival_right, x='Values', y='P', s=point_size, c='C0', ax=ax['middle'], label='_nolegend_');
+    ax['middle'].set_xlim(-lin_scale*2, lin_scale*2);
+    ax['middle'].set_xlabel('X');
+    ax['middle'].set_ylabel('P(|x| > |X|)');
+    ax['middle'].set_title(plot_title);
 
-        # Get survival function
-        survival_func = survival.get_twosided_survival_function(subset)
+    # Plot the left tail on the lower left subplot
+    sns.scatterplot(data=survival_left,  x='Values', y='P', s=point_size, c='C0', ax=ax['left']);
+    ax['left'].set_xlim(2*max_scale, lin_scale/2);
+    ax['left'].set_xscale('log');
+    ax['left'].set_yscale('log');
+    ax['left'].set_xlabel('-X');
+    ax['left'].set_ylabel('P(x < X)');
+    ax['left'].set_ylim([min_p/2, 1]);
 
-        # Plot
-        sns.scatterplot(data=survival_func, x='Values', y='P', s=point_size, color='C0', alpha=1./n_subsets, ax=ax, label='Samples' if n_subsets==1 else '_nolegend_');
+    # Plot the right tail on the lower right subplot
+    sns.scatterplot(data=survival_right, x='Values', y='P', s=point_size, c='C0', ax=ax['right']);
+    ax['right'].set_xlim(lin_scale/2, max_scale*2);
+    ax['right'].set_xscale('log');
+    ax['right'].set_yscale('log');
+    ax['right'].set_xlabel('X');
+    ax['right'].set_ylabel('P(x > X)');
+    ax['right'].set_ylim([min_p/2, 1]);
 
-    ax.grid(visible=True, which='both');
-    ax.set_xscale('symlog', linthresh=log_threshold, linscale=0.5, subs=range(2,10));
-    ax.set_yscale('logit');
-    ax.set_ylim([1./len(cleaned_series)/2., 1.-1./len(cleaned_series)/2.]);
-    ax.set_xlim([-2*series_max, 2*series_max]);
-    ax.set_xlabel('X');
-    ax.set_ylabel('P(x > X)');
-    ax.set_title(plot_title);
-
-    # Also fit and plot if 'dist' is given
+    # Plot distribution, if given
     if distribution is not None:
-        #dist_params = distribution.fit(cleaned_series)
 
-        # Get analytical distribution
-        x = np.hstack([np.linspace(0, log_threshold, 500), np.logspace(np.log10(log_threshold), np.log10(2*series_max), 500)]);
-        x= sorted(np.hstack([-x, x]));
-        p = 1.-distribution[0].cdf(x, *distribution[1])
+        # Get left side
+        x_left = np.linspace(-max_scale*2, 0, 1000)
+        p_left = distribution[0].cdf(x_left, *distribution[1])
 
-        # Plot
-        with sns.axes_style('whitegrid'):
-            sns.lineplot(x=x, y=p,  color='C3', ax=ax, label='Fitted distribution ({})'.format(distribution[0].name));
-            ax.legend();
+        # Get right side
+        x_right = np.linspace(0, max_scale*2, 1000)
+        p_right = distribution[0].sf(x_right, *distribution[1])
 
-    return survival_func, ax
+        # Plot middle (top subplot)
+        sns.lineplot(x=x_left,  y=p_left,  color='C3', ax=ax['middle']);
+        sns.lineplot(x=x_right, y=p_right, color='C3', ax=ax['middle']);
+        ax['middle'].legend(['Samples', 'Fitted distribution ({})'.format(distribution[0].name)]);
+
+        # Plot left and right tails (lower two subplots)
+        sns.lineplot(x=-x_left[x_left < 0],  y=p_left[x_left < 0],   color='C3', ax=ax['left']);
+        sns.lineplot(x=x_right[x_right > 0], y=p_right[x_right > 0], color='C3', ax=ax['right']);
+
+    # Get two-sided survival function to return
+    survival_both = survival.get_twosided_survival_function(series)
+
+    return survival_both, ax
 
 
 

@@ -158,7 +158,7 @@ def plot_survival_function(series, tail_zoom=False, distribution=None, figsize=F
 
 
 
-def plot_twosided_survival_function(series, distribution=None, figsize=FIG_SIZE, point_size=5, title_annotation=None):
+def plot_twosided_survival_function(series, distribution=None, figsize=FIG_SIZE, point_size=5, title_annotation=None, ax=None):
     '''
     Plots a two-sided survival function using a combination of subplots with linear and log-log axes to show the
     entire distribution in one plot.
@@ -167,6 +167,7 @@ def plot_twosided_survival_function(series, distribution=None, figsize=FIG_SIZE,
     :param figsize: Size of figure to use for entire subplot.
     :param point_size: Point size to use for plotting samples.
     :param title_annotation: Allows to add text in parenthesis to the title of the plot.
+    :param ax: Matplotlib axis can be specified to plot on.
     :return: The survival data itself as a Pandas DataFrame (note: not the same as the plotted data) and the axis object.
     '''
 
@@ -187,7 +188,8 @@ def plot_twosided_survival_function(series, distribution=None, figsize=FIG_SIZE,
     if title_annotation is not None:
         plot_title += ' ({})'.format(title_annotation)
     with sns.axes_style('whitegrid'):
-        fig, ax = plt.subplot_mosaic([['middle', 'middle'],['left', 'right']], figsize=figsize, gridspec_kw={'wspace': 0.1});
+        if ax is None:
+            fig, ax = plt.subplot_mosaic([['middle', 'middle'],['left', 'right']], figsize=figsize, gridspec_kw={'wspace': 0.1});
 
     # Set ticks for the log-log plots and move labels of right side to the right
     ax['left'].yaxis.tick_left()

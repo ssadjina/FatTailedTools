@@ -270,6 +270,7 @@ def fit_alpha_and_scale_linear_subsampling(
 
         # Set up lists to store results of the linear fits
         fitted_tail_exponents = []
+        fitted_scales         = []
         fitted_MSE            = []
 
         # Iterate through the treshold range
@@ -285,12 +286,16 @@ def fit_alpha_and_scale_linear_subsampling(
             # Get tail exponent
             tail_exponent = -slope
 
+            # Get scale
+            scale = 10**(- intercept / slope)
+
             # Get mean squared error (MSE)
             y_pred = intercept + x_fit * slope
             MSE    = np.mean((y_pred - y_fit)**2)
 
             # Store results
             fitted_tail_exponents.append(tail_exponent)
+            fitted_scales.append(scale)
             fitted_MSE.append(MSE)
 
         # Prepare array of MSE results and get lowest achieved MSE for any of the fits
@@ -303,6 +308,7 @@ def fit_alpha_and_scale_linear_subsampling(
         # This is done via exponential weighting of the results wrt. the MSE
         weights                 = np.exp(-fitted_MSE / MSE_min)
         best_fit_tail_exponent  = np.average(fitted_tail_exponents, weights=weights)
+        best_fit_scale          = np.average(fitted_scales,         weights=weights)
         best_fit_threshold      = np.average(thresholds,            weights=weights)
 
         # --------------------------------------------------------------------------------------------
@@ -327,6 +333,7 @@ def fit_alpha_and_scale_linear_subsampling(
         # Collect results
         results.append([
             best_fit_tail_exponent,
+            best_fit_scale,
             t_scale,
             MSE_min,
             best_fit_threshold,
@@ -392,7 +399,7 @@ def fit_alpha_and_scale_linear_subsampling(
     # Assemble results
 
     # Construct DataFrame to return
-    df_results = pd.DataFrame(results, columns=['Tail Exponent', 'Scale', 'MSE', 'Threshold', 'Time Shift'])
+    df_results = pd.DataFrame(results, columns=['Tail Exponent', 'Scale (Pareto)', 'Scale', 'MSE', 'Threshold', 'Time Shift'])
 
     # Add tail coefficient (inverse alpha)
     df_results['Tail Coefficient'] = 1 / df_results['Tail Exponent']
